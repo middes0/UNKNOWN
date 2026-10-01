@@ -72,7 +72,6 @@ class MainActivity : ComponentActivity() {
     ) { granted ->
         if (granted) {
             voiceEnabled = true
-            startNexaListening()
             speak("Nexa ativada.")
         } else {
             voiceEnabled = false
@@ -613,14 +612,14 @@ class MainActivity : ComponentActivity() {
                 override fun onEndOfSpeech() { listening = false }
                 override fun onError(error: Int) {
                     listening = false
-                    if (voiceEnabled) restartNexaListening(450)
+                    if (voiceEnabled) restartNexaListening(250)
                 }
                 override fun onResults(results: Bundle?) {
                     listening = false
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
                     val phrase = matches.firstOrNull().orEmpty()
                     if (phrase.isNotBlank()) handleNexaCommand(phrase)
-                    if (voiceEnabled) restartNexaListening(350)
+                    if (voiceEnabled && !speaking) restartNexaListening(250)
                 }
                 override fun onPartialResults(partialResults: Bundle?) = Unit
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
@@ -696,15 +695,41 @@ class MainActivity : ComponentActivity() {
         }
 
         when {
-            command.contains("modo estudo") || command == "estudo" || command.contains("ativar estudo") -> {
+            command.contains("modo estudo") ||
+                command.contains("modo de estudo") ||
+                command.contains("modo estudar") ||
+                command.contains("ativar modo estudo") ||
+                command.contains("ativa modo estudo") ||
+                command.contains("ativar estudo") ||
+                command.contains("ativa estudo") ||
+                command == "estudo" ||
+                command == "estudar" -> {
                 applyScene("Estudo", true)
                 speak("Modo estudo ativado.")
             }
-            command.contains("modo gaming") || command.contains("modo game") || command.contains("modo jogo") || command == "gaming" || command == "game" || command.contains("ativar gaming") || command.contains("ativar game") -> {
+            command.contains("modo gaming") ||
+                command.contains("modo game") ||
+                command.contains("modo jogo") ||
+                command.contains("ativar modo gaming") ||
+                command.contains("ativar modo game") ||
+                command.contains("ativa modo gaming") ||
+                command.contains("ativa modo game") ||
+                command.contains("ativar gaming") ||
+                command.contains("ativar game") ||
+                command.contains("ativa gaming") ||
+                command.contains("ativa game") ||
+                command == "gaming" ||
+                command == "game" -> {
                 applyScene("Gaming", true)
                 speak("Modo gaming ativado.")
             }
-            command.contains("modo trabalho") || command == "trabalho" || command.contains("ativar trabalho") -> {
+            command.contains("modo trabalho") ||
+                command.contains("modo de trabalho") ||
+                command.contains("ativar modo trabalho") ||
+                command.contains("ativa modo trabalho") ||
+                command.contains("ativar trabalho") ||
+                command.contains("ativa trabalho") ||
+                command == "trabalho" -> {
                 applyScene("Trabalho", true)
                 speak("Modo trabalho ativado.")
             }
@@ -734,7 +759,8 @@ class MainActivity : ComponentActivity() {
                 speak("Abrindo aplicativos.")
             }
             else -> {
-                speak("Não entendi o comando. Tente dizer, por exemplo, Nexa, ativar modo estudo.")
+                // Comando desconhecido: não interrompe o usuário com uma mensagem.
+                // A NEXA simplesmente continua ouvindo o próximo comando.
             }
         }
     }
@@ -743,10 +769,12 @@ class MainActivity : ComponentActivity() {
         try {
             val intent = packageManager.getLaunchIntentForPackage(packageName)
             if (intent != null) {
-                speak("Abrindo $label.")
-                voiceHandler.postDelayed({
-                    try { startActivity(intent) } catch (_: Exception) {}
-                }, 250)
+                try {
+                    startActivity(intent)
+                    speak("Abrindo $label.")
+                } catch (_: Exception) {
+                    speak("Não consegui abrir o $label.")
+                }
             } else {
                 speak("O $label não está instalado.")
             }
