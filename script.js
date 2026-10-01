@@ -16,18 +16,11 @@ function addStoryMessage(name,text,history){
 function triggerStory(event){
  if(state.story[event])return;
  state.story[event]=true;saveStory();
- if(event==="gallery"){
-   addStoryMessage("Número desconhecido","Você abriu a foto. Agora olhe os detalhes.");
-   toastMsg("Nova mensagem recebida");
- }
- if(event==="files"){
-   addStoryMessage("Número desconhecido","O arquivo não estava aqui antes. Não abra sozinho.");
-   toastMsg("Um arquivo apareceu");
- }
- if(event==="email"){
-   addStoryMessage("admin@unknown.local","Você realmente abriu o e-mail.");
-   toastMsg("Algo mudou nas mensagens");
- }
+ if(event==="choiceAsk"){addStoryMessage("Número desconhecido","Então procure IMG_0001.jpg. Não confie no nome do arquivo.");toastMsg("Nova pista recebida");}
+ if(event==="photoOpened"){addStoryMessage("Número desconhecido","Amplie a foto. Há algo escondido no canto.");toastMsg("A foto revelou uma pista");}
+ if(event==="fileOpened"){addStoryMessage("Número desconhecido","A senha está escondida onde ninguém procura: 0217.");toastMsg("Arquivo desbloqueado");}
+ if(event==="codeFound"){addStoryMessage("Número desconhecido","Agora use 0217 no navegador.");toastMsg("Nova etapa desbloqueada");}
+ if(event==="browserCode"){addStoryMessage("admin@unknown.local","Você encontrou a página. A próxima pista está nos documentos.");toastMsg("Página encontrada");}
 }
 
 const $=s=>document.querySelector(s);
@@ -109,8 +102,8 @@ function renderChat(i){
  };
 }
 function renderPhone(){appBody.innerHTML=`<div class="app-card"><h3>Chamadas recentes</h3><p>Nenhuma chamada registrada.</p></div><div class="empty">O telefone está em silêncio.</div>`}
-function renderGallery(){appBody.innerHTML=`<div class="app-card"><h3>Galeria</h3><p>3 itens • sincronização local</p></div><div class="app-card"><div style="height:180px;border-radius:12px;background:linear-gradient(145deg,#111,#282828);display:grid;place-items:center;font-size:48px">▧</div><p>IMG_0001.jpg</p></div><div class="app-card"><div style="height:120px;border-radius:12px;background:#111;display:grid;place-items:center;font-size:34px">?</div><p>arquivo_corrompido.png</p></div>`}
-function renderFiles(){appBody.innerHTML=`<div class="app-card"><h3>Armazenamento interno</h3><p>4,8 GB usados de 64 GB</p></div><div class="list-row"><span class="avatar">□</span><span class="row-main"><b>DCIM</b><small>12 arquivos</small></span></div><div class="list-row"><span class="avatar">□</span><span class="row-main"><b>Downloads</b><small>4 arquivos</small></span></div><div class="list-row"><span class="avatar">□</span><span class="row-main"><b>documentos</b><small>1 arquivo</small></span></div>`}
+function renderGallery(){appBody.innerHTML=`<div class="app-card"><h3>Galeria</h3><p>3 itens • sincronização local</p></div><button class="app-card" id="photoClue" style="width:100%;text-align:left;border:0;color:inherit"><div style="height:180px;border-radius:12px;background:linear-gradient(145deg,#111,#282828);display:grid;place-items:center;font-size:48px">▧</div><p>IMG_0001.jpg</p><small>Toque para abrir</small></button><div class="app-card"><div style="height:120px;border-radius:12px;background:#111;display:grid;place-items:center;font-size:34px">?</div><p>arquivo_corrompido.png</p></div>`;$("#photoClue").onclick=()=>{triggerStory("photoOpened");$("#photoClue small").textContent="Detalhes: 02:17";if(!state.story.codeFound){setTimeout(()=>triggerStory("codeFound"),1200)}}}
+function renderFiles(){appBody.innerHTML=`<div class="app-card"><h3>Armazenamento interno</h3><p>4,8 GB usados de 64 GB</p></div><div class="list-row"><span class="avatar">□</span><span class="row-main"><b>DCIM</b><small>12 arquivos</small></span></div><div class="list-row"><span class="avatar">□</span><span class="row-main"><b>Downloads</b><small>4 arquivos</small></span></div><button class="list-row" id="secretFile" style="width:100%;text-align:left"><span class="avatar">□</span><span class="row-main"><b>documentos</b><small>1 arquivo • protegido</small></span></button>`;$("#secretFile").onclick=()=>triggerStory("fileOpened")}
 function renderBrowser(){appBody.innerHTML=`<input class="search" id="browserSearch" placeholder="Pesquisar ou digitar endereço"><div class="app-card"><h3>Não há conexão</h3><p>Este navegador pertence ao jogo. Alguns sites serão desbloqueados conforme a história avança.</p></div><div id="browserResult"></div>`;$("#browserSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim();$("#browserResult").innerHTML=q?`<div class="app-card"><h3>Pesquisa</h3><p>Nenhum resultado para “${escapeHtml(q)}”.</p></div>`:""}})}
 function renderEmail(){appBody.innerHTML=`<div class="list-row"><span class="avatar">@</span><span class="row-main"><b>admin@unknown.local</b><small>Assunto: não abra o arquivo</small></span><span class="time">03:41</span></div><div class="app-card"><h3>Caixa de entrada</h3><p>Existe 1 mensagem. Abra quando estiver pronto.</p></div>`}
 function renderSettings(){appBody.innerHTML=`<div class="app-card"><h3>Sobre este dispositivo</h3><p>UNKNOWN Phone<br>Versão 0.1<br>ID: U-0001</p></div><div class="app-card"><h3>Privacidade</h3><p>Os dados da partida ficam salvos neste dispositivo.</p></div><div class="app-card"><button id="resetGame" style="width:100%;text-align:left">Redefinir dados da partida</button></div>`;$("#resetGame").onclick=()=>{if(confirm("Apagar os dados locais desta partida?")){localStorage.clear();location.reload()}}}
