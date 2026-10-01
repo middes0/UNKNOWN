@@ -3,6 +3,7 @@ package com.middes.launcher
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -20,10 +21,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var search: EditText
     private lateinit var clock: TextView
 
-    private val bg = Color.rgb(10, 10, 12)
-    private val panel = Color.rgb(24, 24, 28)
+    private val bg = Color.rgb(8, 9, 11)
+    private val card = Color.rgb(19, 20, 24)
+    private val card2 = Color.rgb(27, 28, 33)
     private val white = Color.WHITE
-    private val gray = Color.rgb(160, 160, 168)
+    private val gray = Color.rgb(150, 153, 162)
     private val accent = Color.rgb(255, 196, 55)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,17 +43,18 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onBackPressed() {
-        if (::drawerView.isInitialized && drawerView.visibility == View.VISIBLE) {
-            closeDrawer()
-        } else {
-            super.onBackPressed()
-        }
+        if (::drawerView.isInitialized && drawerView.visibility == View.VISIBLE) closeDrawer()
+        else super.onBackPressed()
     }
 
-    private fun buildUi() {
-        root = FrameLayout(this)
-        root.setBackgroundColor(bg)
+    private fun rounded(color: Int, radius: Float = 28f): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radius
+        }
 
+    private fun buildUi() {
+        root = FrameLayout(this).apply { setBackgroundColor(bg) }
         homeView = buildHome()
         drawerView = buildDrawer()
 
@@ -66,89 +69,116 @@ class MainActivity : ComponentActivity() {
     private fun buildHome(): LinearLayout {
         val view = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(20, 22, 20, 16)
+            setPadding(22, 26, 22, 14)
             setBackgroundColor(bg)
         }
 
+        val header = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val brand = TextView(this).apply {
+            text = "MIDDES"
+            textSize = 14f
+            letterSpacing = 0.22f
+            setTextColor(white)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        header.addView(brand, LinearLayout.LayoutParams(0, 44, 1f))
+
+        val status = TextView(this).apply {
+            text = "●  ONLINE"
+            textSize = 10f
+            letterSpacing = 0.08f
+            setTextColor(Color.rgb(135, 190, 145))
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(status, LinearLayout.LayoutParams(-2, 44))
+        view.addView(header)
+
+        val timeBlock = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, 42, 0, 0)
+        }
+
         clock = TextView(this).apply {
-            textSize = 52f
+            textSize = 66f
             setTextColor(white)
             gravity = Gravity.CENTER
-            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         }
-        view.addView(clock, LinearLayout.LayoutParams(-1, 72))
+        timeBlock.addView(clock, LinearLayout.LayoutParams(-1, 82))
 
         val date = TextView(this).apply {
-            textSize = 14f
+            textSize = 13f
             setTextColor(gray)
             gravity = Gravity.CENTER
+            letterSpacing = 0.04f
             text = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR"))
                 .format(Date()).replaceFirstChar { it.uppercase() }
         }
-        view.addView(date, LinearLayout.LayoutParams(-1, 30))
+        timeBlock.addView(date, LinearLayout.LayoutParams(-1, 32))
+        view.addView(timeBlock)
 
         view.addView(Space(this), LinearLayout.LayoutParams(1, 0, 1f))
 
-        val title = TextView(this).apply {
-            text = "Middes"
-            textSize = 26f
-            setTextColor(white)
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-        }
-        view.addView(title, LinearLayout.LayoutParams(-1, 45))
-
-        val subtitle = TextView(this).apply {
-            text = "Seu espaço. Seus aplicativos."
-            textSize = 14f
+        val section = TextView(this).apply {
+            text = "SEUS APLICATIVOS"
+            textSize = 11f
+            letterSpacing = 0.12f
             setTextColor(gray)
-            gravity = Gravity.CENTER
         }
-        view.addView(subtitle, LinearLayout.LayoutParams(-1, 30))
+        view.addView(section, LinearLayout.LayoutParams(-1, 30))
 
         val open = TextView(this).apply {
-            text = "☷\nAplicativos"
+            text = "Todos os aplicativos   ›"
             textSize = 15f
             setTextColor(white)
-            gravity = Gravity.CENTER
-            setBackgroundColor(panel)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(20, 0, 20, 0)
+            background = rounded(card, 24f)
             setOnClickListener { openDrawer() }
         }
-        view.addView(open, LinearLayout.LayoutParams(170, 72).apply {
-            setMargins(0, 24, 0, 16)
+        view.addView(open, LinearLayout.LayoutParams(-1, 58).apply {
+            setMargins(0, 0, 0, 14)
         })
 
         val dock = LinearLayout(this).apply {
             gravity = Gravity.CENTER
-            setBackgroundColor(panel)
+            background = rounded(card, 24f)
+            setPadding(8, 4, 8, 4)
         }
 
         val home = TextView(this).apply {
-            text = "⌂"
-            textSize = 28f
+            text = "HOME"
+            textSize = 10f
+            letterSpacing = 0.12f
             gravity = Gravity.CENTER
             setTextColor(accent)
+            typeface = Typeface.DEFAULT_BOLD
         }
-        dock.addView(home, LinearLayout.LayoutParams(64, 54))
+        dock.addView(home, LinearLayout.LayoutParams(0, 52, 1f))
 
         val apps = TextView(this).apply {
-            text = "☷"
-            textSize = 25f
+            text = "APPS"
+            textSize = 10f
+            letterSpacing = 0.12f
             gravity = Gravity.CENTER
-            setTextColor(white)
+            setTextColor(gray)
+            typeface = Typeface.DEFAULT_BOLD
             setOnClickListener { openDrawer() }
         }
-        dock.addView(apps, LinearLayout.LayoutParams(64, 54))
+        dock.addView(apps, LinearLayout.LayoutParams(0, 52, 1f))
 
-        view.addView(dock, LinearLayout.LayoutParams(-1, 58))
+        view.addView(dock, LinearLayout.LayoutParams(-1, 60))
         return view
     }
 
     private fun buildDrawer(): LinearLayout {
         val view = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 22, 20, 16)
+            setPadding(20, 24, 20, 14)
             setBackgroundColor(bg)
         }
 
@@ -156,34 +186,44 @@ class MainActivity : ComponentActivity() {
 
         val back = TextView(this).apply {
             text = "‹"
-            textSize = 36f
+            textSize = 38f
             setTextColor(white)
             gravity = Gravity.CENTER
             setOnClickListener { closeDrawer() }
         }
         top.addView(back, LinearLayout.LayoutParams(48, 52))
 
-        val title = TextView(this).apply {
-            text = "Aplicativos"
-            textSize = 21f
-            setTextColor(white)
-            typeface = Typeface.DEFAULT_BOLD
+        val titleBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        top.addView(title, LinearLayout.LayoutParams(0, 52, 1f))
+        val title = TextView(this).apply {
+            text = "Aplicativos"
+            textSize = 23f
+            setTextColor(white)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        titleBox.addView(title, LinearLayout.LayoutParams(-1, 32))
+        val sub = TextView(this).apply {
+            text = "Tudo instalado neste dispositivo"
+            textSize = 11f
+            setTextColor(gray)
+        }
+        titleBox.addView(sub, LinearLayout.LayoutParams(-1, 22))
+        top.addView(titleBox, LinearLayout.LayoutParams(0, 52, 1f))
         view.addView(top)
 
         search = EditText(this).apply {
-            hint = "Pesquisar aplicativos"
-            setHintTextColor(Color.rgb(120, 120, 128))
+            hint = "Buscar aplicativo"
+            hintTextColor = Color.rgb(115, 118, 125)
             setTextColor(white)
-            textSize = 15f
+            textSize = 14f
             setSingleLine(true)
-            setPadding(18, 0, 18, 0)
-            setBackgroundColor(panel)
+            setPadding(20, 0, 20, 0)
+            background = rounded(card2, 22f)
         }
         view.addView(search, LinearLayout.LayoutParams(-1, 52).apply {
-            setMargins(0, 8, 0, 8)
+            setMargins(0, 14, 0, 12)
         })
 
         val scroll = ScrollView(this)
@@ -223,7 +263,6 @@ class MainActivity : ComponentActivity() {
 
     private fun loadApps(query: String) {
         appsContainer.removeAllViews()
-
         val pm = packageManager
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
@@ -241,7 +280,7 @@ class MainActivity : ComponentActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.TOP
                 }.also {
-                    appsContainer.addView(it, LinearLayout.LayoutParams(-1, 104))
+                    appsContainer.addView(it, LinearLayout.LayoutParams(-1, 108))
                 }
             } else {
                 appsContainer.getChildAt(appsContainer.childCount - 1) as LinearLayout
@@ -250,35 +289,36 @@ class MainActivity : ComponentActivity() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                setPadding(2, 4, 2, 4)
+                setPadding(4, 6, 4, 6)
                 setOnClickListener {
                     val launch = Intent(Intent.ACTION_MAIN).apply {
                         addCategory(Intent.CATEGORY_LAUNCHER)
                         setClassName(info.activityInfo.packageName, info.activityInfo.name)
                     }
-                    try {
-                        startActivity(launch)
-                    } catch (_: Exception) {
-                    }
+                    try { startActivity(launch) } catch (_: Exception) {}
                 }
             }
 
-            val icon = ImageView(this).apply {
-                setImageDrawable(info.loadIcon(pm))
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val iconBox = FrameLayout(this).apply {
+                background = rounded(card, 18f)
+                addView(ImageView(this@MainActivity).apply {
+                    setImageDrawable(info.loadIcon(pm))
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    setPadding(10, 10, 10, 10)
+                }, FrameLayout.LayoutParams(58, 58, Gravity.CENTER))
             }
-            item.addView(icon, LinearLayout.LayoutParams(58, 58))
+            item.addView(iconBox, LinearLayout.LayoutParams(70, 66))
 
             val label = TextView(this).apply {
                 text = info.loadLabel(pm)
-                textSize = 11f
+                textSize = 10.5f
                 gravity = Gravity.CENTER
                 setTextColor(white)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            item.addView(label, LinearLayout.LayoutParams(-1, 30))
-            row.addView(item, LinearLayout.LayoutParams(0, 100, 1f))
+            item.addView(label, LinearLayout.LayoutParams(-1, 28))
+            row.addView(item, LinearLayout.LayoutParams(0, 104, 1f))
         }
     }
 }
