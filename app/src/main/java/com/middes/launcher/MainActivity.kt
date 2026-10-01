@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
 
         search = EditText(this).apply {
             hint = "Buscar aplicativo"
-            hintTextColor = Color.rgb(115, 118, 125)
+            setHintTextColor(Color.rgb(115, 118, 125))
             setTextColor(white)
             textSize = 14f
             setSingleLine(true)
