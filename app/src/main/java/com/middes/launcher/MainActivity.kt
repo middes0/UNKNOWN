@@ -1024,7 +1024,6 @@ private lateinit var gameModeView: GameModeView
             drawerView.visibility = View.GONE
             deskView.visibility = View.GONE
             settingsView.visibility = View.GONE
-            }
         }
     }
 
