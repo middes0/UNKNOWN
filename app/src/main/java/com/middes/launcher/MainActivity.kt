@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 4, 0, 8)
         }
-        scroll.addView(appsContainer, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(appsContainer, android.widget.FrameLayout.LayoutParams(-1, -2))
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         search.addTextChangedListener(object : TextWatcher {
