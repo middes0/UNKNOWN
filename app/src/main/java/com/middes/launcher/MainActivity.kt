@@ -3,6 +3,7 @@ package com.middes.launcher
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -791,8 +792,20 @@ class MainActivity : ComponentActivity() {
                 speak("Abrindo aplicativos.")
             }
             else -> {
-                // Comando desconhecido: não interrompe o usuário com uma mensagem.
-                // A NEXA simplesmente continua ouvindo o próximo comando.
+                // Última tentativa: procurar pelo nome real de qualquer app instalado.
+                // Assim comandos como "Nexa, abra o relógio" não dependem de pacote fixo.
+                val appCommand = command
+                    .removePrefix("abrir ")
+                    .removePrefix("abra ")
+                    .removePrefix("abre ")
+                    .removePrefix("aplicativo ")
+                    .removePrefix("app ")
+                    .trim()
+
+                if (command.startsWith("abrir ") || command.startsWith("abra ") || command.startsWith("abre ")) {
+                    openInstalledAppByName(appCommand)
+                }
+                // Se não for um comando de abertura, simplesmente continua ouvindo.
             }
         }
     }
@@ -801,17 +814,68 @@ class MainActivity : ComponentActivity() {
         try {
             val intent = packageManager.getLaunchIntentForPackage(packageName)
             if (intent != null) {
+                launchVoiceIntent(intent, label)
+            } else {
+                speak("O $label não está instalado.")
+            }
+        } catch (_: Exception) {
+            speak("Não consegui abrir o $label.")
+        }
+    }
+
+    private fun launchVoiceIntent(intent: Intent, label: String) {
+        try {
+            // Abre primeiro e fala depois. Assim a fala da NEXA não atrasa a troca de tela.
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            startActivity(intent)
+            voiceHandler.postDelayed({ speak("Abrindo $label.") }, 120)
+        } catch (_: Exception) {
+            // Uma segunda tentativa rápida resolve alguns casos em que o launcher ainda está retomando.
+            voiceHandler.postDelayed({
                 try {
                     startActivity(intent)
                     speak("Abrindo $label.")
                 } catch (_: Exception) {
                     speak("Não consegui abrir o $label.")
                 }
+            }, 180)
+        }
+    }
+
+    private fun openInstalledAppByName(spokenName: String) {
+        val wanted = normalizeVoice(spokenName)
+            .replace("abrir ", "")
+            .replace("abra ", "")
+            .replace("abre ", "")
+            .replace("aplicativo ", "")
+            .replace("app ", "")
+            .trim()
+
+        if (wanted.isBlank()) return
+
+        try {
+            val apps = packageManager.getInstalledApplications(0)
+                .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 || packageManager.getLaunchIntentForPackage(it.packageName) != null }
+
+            val match = apps
+                .mapNotNull { app ->
+                    val label = normalizeVoice(packageManager.getApplicationLabel(app).toString())
+                    if (label == wanted || label.contains(wanted) || wanted.contains(label)) {
+                        val launch = packageManager.getLaunchIntentForPackage(app.packageName)
+                        if (launch != null) Triple(app, label, launch) else null
+                    } else null
+                }
+                .sortedBy { if (normalizeVoice(packageManager.getApplicationLabel(it.first).toString()) == wanted) 0 else 1 }
+                .firstOrNull()
+
+            if (match != null) {
+                val display = packageManager.getApplicationLabel(match.first).toString()
+                launchVoiceIntent(match.third, display)
             } else {
-                speak("O $label não está instalado.")
+                speak("Não encontrei esse aplicativo.")
             }
         } catch (_: Exception) {
-            speak("Não consegui abrir o $label.")
+            speak("Não consegui acessar seus aplicativos.")
         }
     }
 
