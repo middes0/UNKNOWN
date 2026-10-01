@@ -1139,7 +1139,7 @@ private lateinit var gameModeView: GameModeView
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = dp(2).toFloat()
             paint.color = cyan
-            canvas.drawCircle(cx, cy, dp(28), paint)
+            canvas.drawCircle(cx, cy, dp(28).toFloat(), paint)
 
             paint.color = Color.argb(180, 110, 210, 255)
             paint.strokeWidth = dp(1).toFloat()
