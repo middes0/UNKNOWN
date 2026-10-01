@@ -106,6 +106,11 @@ private lateinit var gameModeView: GameModeView
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
         currentScene = prefs.getString("scene", "Normal") ?: "Normal"
+        // Gaming é uma sessão visual temporária: ao reabrir o launcher, volta para Normal.
+        if (currentScene == "Gaming") {
+            currentScene = "Normal"
+            prefs.edit().putString("scene", "Normal").apply()
+        }
         setupNexa()
         buildUi()
     }
@@ -131,6 +136,7 @@ private lateinit var gameModeView: GameModeView
 
     override fun onBackPressed() {
         when {
+            currentScene == "Gaming" -> applyScene("Normal", true)
             ::drawerView.isInitialized && drawerView.visibility == View.VISIBLE -> closeDrawer()
             ::deskView.isInitialized && deskView.visibility == View.VISIBLE -> closeDesk()
             ::settingsView.isInitialized && settingsView.visibility == View.VISIBLE -> closeSettings()
@@ -1012,6 +1018,10 @@ private lateinit var gameModeView: GameModeView
         if (::gameModeView.isInitialized) {
             gameModeView.stopGameAnimation()
             gameModeView.visibility = View.GONE
+            homeView.visibility = View.VISIBLE
+            drawerView.visibility = View.GONE
+            deskView.visibility = View.GONE
+            settingsView.visibility = View.GONE
         }
     }
 
@@ -1023,6 +1033,8 @@ private lateinit var gameModeView: GameModeView
         private var pulse = 0f
         private var running = false
         private var entrance = true
+        private var booting = false
+        private var bootStart = 0L
         private val iconViews = mutableListOf<Pair<String, ImageView>>()
         private val cyan = Color.rgb(110, 210, 255)
         private val violet = Color.rgb(155, 95, 255)
@@ -1030,6 +1042,11 @@ private lateinit var gameModeView: GameModeView
         private val ticker = object : Runnable {
             override fun run() {
                 if (!running) return
+                if (booting) {
+                    invalidate()
+                    handler.postDelayed(this, 16L)
+                    return
+                }
                 orbitAngle = (orbitAngle + 0.65f) % 360f
                 pulse += 0.08f
                 if (entrance && orbitRadius < dp(116).toFloat()) {
@@ -1050,6 +1067,18 @@ private lateinit var gameModeView: GameModeView
             alpha = 0f
             scaleX = 1.035f
             scaleY = 1.035f
+
+            // Controle manual para nunca deixar o usuário preso no Gaming Mode.
+            val exit = textView("SAIR  ×", 10f, Color.argb(220, 210, 220, 235), true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(12), 0, dp(12), 0)
+                background = rounded(Color.argb(150, 14, 18, 28), 18f, Color.argb(100, 110, 210, 255))
+                setOnClickListener { applyScene("Normal", true) }
+                contentDescription = "Sair do modo gaming"
+            }
+            addView(exit, LayoutParams(dp(82), dp(42), Gravity.TOP or Gravity.END).apply {
+                setMargins(0, dp(24), dp(16), 0)
+            })
         }
 
         fun setSceneApps(packages: List<String>) {
@@ -1081,27 +1110,41 @@ private lateinit var gameModeView: GameModeView
             stopGameAnimation()
             running = true
             entrance = animate
+            booting = animate
+            bootStart = System.currentTimeMillis()
             orbitRadius = if (animate) 0f else dp(116).toFloat()
             alpha = if (animate) 0f else 1f
             scaleX = if (animate) 1.035f else 1f
             scaleY = scaleX
-            iconViews.forEachIndexed { index, pair ->
+
+            iconViews.forEach { pair ->
                 pair.second.alpha = if (animate) 0f else 1f
                 pair.second.scaleX = if (animate) 0.2f else 1f
                 pair.second.scaleY = pair.second.scaleX
-                if (animate) {
-                    pair.second.animate()
-                        .alpha(1f)
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setStartDelay(420L + index * 90L)
-                        .setDuration(520L)
-                        .start()
-                }
             }
+
             if (animate) {
-                animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(520L).start()
+                // Primeiro a tela normal escurece; depois o sistema é inicializado.
+                animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420L).start()
+
+                handler.postDelayed({
+                    if (!running) return@postDelayed
+                    booting = false
+                    entrance = true
+                    orbitRadius = 0f
+                    iconViews.forEachIndexed { index, pair ->
+                        pair.second.animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setStartDelay(index * 90L)
+                            .setDuration(520L)
+                            .start()
+                    }
+                    invalidate()
+                }, 1350L)
             }
+
             handler.post(ticker)
         }
 
@@ -1114,6 +1157,35 @@ private lateinit var gameModeView: GameModeView
             super.onDraw(canvas)
             val cx = width / 2f
             val cy = height / 2f - dp(12)
+
+            if (booting) {
+                paint.style = Paint.Style.FILL
+                paint.color = Color.rgb(3, 4, 8)
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+                val elapsed = (System.currentTimeMillis() - bootStart).coerceAtLeast(0L)
+                val pulse = (kotlin.math.sin(elapsed / 170.0) * 0.5 + 0.5).toFloat()
+
+                paint.color = Color.argb((45 + pulse * 45).toInt(), 110, 210, 255)
+                canvas.drawCircle(cx, cy, dp(20) + dp(8) * pulse, paint)
+
+                paint.color = Color.rgb(110, 210, 255)
+                paint.textAlign = Paint.Align.CENTER
+                paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+                paint.textSize = dp(16).toFloat()
+                canvas.drawText("NEXA", cx, cy - dp(8), paint)
+
+                paint.color = Color.argb(205, 190, 205, 220)
+                paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                paint.textSize = dp(10).toFloat()
+                canvas.drawText("INICIANDO MODO GAMING", cx, cy + dp(22), paint)
+
+                paint.color = Color.argb(110, 110, 210, 255)
+                paint.textSize = dp(8).toFloat()
+                canvas.drawText("CARREGANDO SISTEMA  //  ONLINE", cx, cy + dp(40), paint)
+                return
+            }
+
             val r = if (orbitRadius > 0f) orbitRadius else dp(116).toFloat()
 
             paint.style = Paint.Style.STROKE
