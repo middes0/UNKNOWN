@@ -9,7 +9,13 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -52,6 +58,27 @@ class MainActivity : ComponentActivity() {
 
     private var currentScene = "Normal"
 
+    private var speechRecognizer: SpeechRecognizer? = null
+    private lateinit var speechIntent: Intent
+    private lateinit var tts: TextToSpeech
+    private var ttsReady = false
+    private var listening = false
+    private var voiceEnabled = false
+    private val voiceHandler = Handler(Looper.getMainLooper())
+
+    private val microphonePermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            voiceEnabled = true
+            startNexaListening()
+            speak("Nexa ativada.")
+        } else {
+            voiceEnabled = false
+            Toast.makeText(this, "Permissão do microfone necessária para a NEXA.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private val wallpaperPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -74,6 +101,7 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
         currentScene = prefs.getString("scene", "Normal") ?: "Normal"
+        setupNexa()
         buildUi()
     }
 
@@ -84,6 +112,16 @@ class MainActivity : ComponentActivity() {
             applyWallpaper()
             applyScene(currentScene, false)
         }
+        if (voiceEnabled && hasMicrophonePermission()) startNexaListening()
+    }
+
+    override fun onDestroy() {
+        stopNexaListening()
+        if (::tts.isInitialized) {
+            tts.stop()
+            tts.shutdown()
+        }
+        super.onDestroy()
     }
 
     override fun onBackPressed() {
@@ -326,7 +364,7 @@ class MainActivity : ComponentActivity() {
         val desk = dockButton("DESK", false) { openDesk() }
         val apps = dockButton("APPS", false) { openDrawer() }
         val voice = dockButton("NEXA", false) {
-            Toast.makeText(this, "A NEXA será integrada nesta base.", Toast.LENGTH_SHORT).show()
+            requestNexaMicrophone()
         }
 
         dock.addView(home, LinearLayout.LayoutParams(0, dp(52), 1f))
@@ -531,6 +569,174 @@ class MainActivity : ComponentActivity() {
         parent.addView(row, LinearLayout.LayoutParams(-1, dp(70)).apply {
             setMargins(0, 0, 0, dp(10))
         })
+    }
+
+    private fun setupNexa() {
+        tts = TextToSpeech(this) { status ->
+            ttsReady = status == TextToSpeech.SUCCESS
+            if (ttsReady) {
+                tts.language = Locale("pt", "BR")
+                tts.setSpeechRate(1.05f)
+            }
+        }
+
+        speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+        }
+
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) { listening = true }
+                override fun onBeginningOfSpeech() { listening = true }
+                override fun onRmsChanged(rmsdB: Float) = Unit
+                override fun onBufferReceived(buffer: ByteArray?) = Unit
+                override fun onEndOfSpeech() { listening = false }
+                override fun onError(error: Int) {
+                    listening = false
+                    if (voiceEnabled) restartNexaListening(450)
+                }
+                override fun onResults(results: Bundle?) {
+                    listening = false
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
+                    val phrase = matches.firstOrNull().orEmpty()
+                    if (phrase.isNotBlank()) handleNexaCommand(phrase)
+                    if (voiceEnabled) restartNexaListening(350)
+                }
+                override fun onPartialResults(partialResults: Bundle?) = Unit
+                override fun onEvent(eventType: Int, params: Bundle?) = Unit
+            })
+        }
+    }
+
+    private fun hasMicrophonePermission(): Boolean =
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun requestNexaMicrophone() {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            Toast.makeText(this, "Reconhecimento de voz não disponível neste aparelho.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!hasMicrophonePermission()) {
+            microphonePermission.launch(android.Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        voiceEnabled = true
+        startNexaListening()
+        speak("Estou ouvindo.")
+    }
+
+    private fun startNexaListening() {
+        if (!voiceEnabled || !hasMicrophonePermission() || isFinishing || isDestroyed) return
+        if (listening) return
+        try {
+            speechRecognizer?.cancel()
+            speechRecognizer?.startListening(speechIntent)
+        } catch (_: Exception) {
+            restartNexaListening(700)
+        }
+    }
+
+    private fun stopNexaListening() {
+        voiceEnabled = false
+        listening = false
+        voiceHandler.removeCallbacksAndMessages(null)
+        try { speechRecognizer?.cancel() } catch (_: Exception) {}
+    }
+
+    private fun restartNexaListening(delay: Long) {
+        voiceHandler.removeCallbacksAndMessages(null)
+        if (!voiceEnabled) return
+        voiceHandler.postDelayed({ startNexaListening() }, delay)
+    }
+
+    private fun speak(text: String) {
+        if (!ttsReady) return
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nexa-response")
+    }
+
+    private fun normalizeVoice(text: String): String {
+        return java.text.Normalizer.normalize(text.lowercase(Locale("pt", "BR")), java.text.Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private fun handleNexaCommand(raw: String) {
+        val text = normalizeVoice(raw)
+        if (!text.contains("nexa")) return
+
+        val command = text.substringAfter("nexa", "").trim().trim(',', '.', ':', ';')
+        if (command.isBlank()) {
+            speak("Estou ouvindo.")
+            return
+        }
+
+        when {
+            command.contains("modo estudo") || command == "estudo" || command.contains("ativar estudo") -> {
+                applyScene("Estudo", true)
+                speak("Modo estudo ativado.")
+            }
+            command.contains("modo gaming") || command.contains("modo jogo") || command == "gaming" || command.contains("ativar gaming") -> {
+                applyScene("Gaming", true)
+                speak("Modo gaming ativado.")
+            }
+            command.contains("modo trabalho") || command == "trabalho" || command.contains("ativar trabalho") -> {
+                applyScene("Trabalho", true)
+                speak("Modo trabalho ativado.")
+            }
+            command.contains("modo noite") || command.contains("modo noturno") || command == "noite" || command.contains("ativar noite") -> {
+                applyScene("Noite", true)
+                speak("Modo noite ativado.")
+            }
+            command.contains("modo normal") || command == "normal" || command.contains("voltar ao normal") -> {
+                applyScene("Normal", true)
+                speak("Modo normal ativado.")
+            }
+            command.contains("abrir whatsapp") || command.contains("abrir whats") || command.contains("abrir zap") || command.contains("abrir wpp") -> {
+                openVoiceApp("com.whatsapp", "WhatsApp")
+            }
+            command.contains("abrir youtube") -> openVoiceApp("com.google.android.youtube", "YouTube")
+            command.contains("abrir chrome") || command.contains("abrir navegador") -> openVoiceApp("com.android.chrome", "Chrome")
+            command.contains("abrir configuracoes") || command.contains("abrir configuracao") -> {
+                try {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                    speak("Abrindo as configurações.")
+                } catch (_: Exception) {
+                    speak("Não consegui abrir as configurações.")
+                }
+            }
+            command.contains("abrir aplicativos") || command.contains("abrir apps") || command.contains("gaveta") -> {
+                openDrawer()
+                speak("Abrindo aplicativos.")
+            }
+            else -> {
+                speak("Não entendi o comando. Tente dizer, por exemplo, Nexa, ativar modo estudo.")
+            }
+        }
+    }
+
+    private fun openVoiceApp(packageName: String, label: String) {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                speak("Abrindo $label.")
+                voiceHandler.postDelayed({
+                    try { startActivity(intent) } catch (_: Exception) {}
+                }, 250)
+            } else {
+                speak("O $label não está instalado.")
+            }
+        } catch (_: Exception) {
+            speak("Não consegui abrir o $label.")
+        }
     }
 
     private fun chooseWallpaper() {
