@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
     private var listening = false
     private var voiceEnabled = false
     private var speaking = false
+    private var bargeInListening = false
     private val voiceHandler = Handler(Looper.getMainLooper())
 
     private val microphonePermission = registerForActivityResult(
@@ -72,7 +73,7 @@ class MainActivity : ComponentActivity() {
     ) { granted ->
         if (granted) {
             voiceEnabled = true
-            speak("Nexa ativada.")
+            speak("Pronto.")
         } else {
             voiceEnabled = false
             Toast.makeText(this, "Permissão do microfone necessária para a NEXA.", Toast.LENGTH_LONG).show()
@@ -580,15 +581,28 @@ class MainActivity : ComponentActivity() {
                 tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
                         speaking = true
-                        voiceHandler.post { try { speechRecognizer?.cancel() } catch (_: Exception) {} }
+                        bargeInListening = false
+                        voiceHandler.post {
+                            try { speechRecognizer?.cancel() } catch (_: Exception) {}
+                            if (voiceEnabled) {
+                                voiceHandler.postDelayed({
+                                    if (voiceEnabled && speaking) {
+                                        bargeInListening = true
+                                        startNexaListening(true)
+                                    }
+                                }, 180)
+                            }
+                        }
                     }
                     override fun onDone(utteranceId: String?) {
                         speaking = false
-                        if (voiceEnabled) restartNexaListening(250)
+                        bargeInListening = false
+                        if (voiceEnabled) restartNexaListening(120)
                     }
                     override fun onError(utteranceId: String?) {
                         speaking = false
-                        if (voiceEnabled) restartNexaListening(250)
+                        bargeInListening = false
+                        if (voiceEnabled) restartNexaListening(120)
                     }
                 })
             }
@@ -612,14 +626,30 @@ class MainActivity : ComponentActivity() {
                 override fun onEndOfSpeech() { listening = false }
                 override fun onError(error: Int) {
                     listening = false
-                    if (voiceEnabled) restartNexaListening(250)
+                    if (voiceEnabled) {
+                        if (speaking && bargeInListening) restartNexaListening(120)
+                        else restartNexaListening(250)
+                    }
                 }
                 override fun onResults(results: Bundle?) {
                     listening = false
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
                     val phrase = matches.firstOrNull().orEmpty()
-                    if (phrase.isNotBlank()) handleNexaCommand(phrase)
-                    if (voiceEnabled && !speaking) restartNexaListening(250)
+
+                    if (speaking && bargeInListening) {
+                        val normalized = normalizeVoice(phrase)
+                        if (normalized.contains("nexa") || normalized.contains("nessa")) {
+                            bargeInListening = false
+                            speaking = false
+                            try { tts.stop() } catch (_: Exception) {}
+                            handleNexaCommand(phrase)
+                        } else if (voiceEnabled) {
+                            restartNexaListening(120)
+                        }
+                    } else {
+                        if (phrase.isNotBlank()) handleNexaCommand(phrase)
+                        if (voiceEnabled && !speaking) restartNexaListening(120)
+                    }
                 }
                 override fun onPartialResults(partialResults: Bundle?) = Unit
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
@@ -646,8 +676,9 @@ class MainActivity : ComponentActivity() {
         speak("Estou ouvindo.")
     }
 
-    private fun startNexaListening() {
-        if (!voiceEnabled || !hasMicrophonePermission() || isFinishing || isDestroyed || speaking) return
+    private fun startNexaListening(allowWhileSpeaking: Boolean = false) {
+        if (!voiceEnabled || !hasMicrophonePermission() || isFinishing || isDestroyed) return
+        if (speaking && !allowWhileSpeaking) return
         if (listening) return
         try {
             speechRecognizer?.cancel()
@@ -660,6 +691,7 @@ class MainActivity : ComponentActivity() {
     private fun stopNexaListening() {
         voiceEnabled = false
         listening = false
+        bargeInListening = false
         voiceHandler.removeCallbacksAndMessages(null)
         try { speechRecognizer?.cancel() } catch (_: Exception) {}
     }
