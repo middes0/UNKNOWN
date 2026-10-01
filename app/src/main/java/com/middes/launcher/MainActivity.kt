@@ -13,10 +13,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : ComponentActivity() {
-    private lateinit var clock: TextView
+    private lateinit var root: FrameLayout
+    private lateinit var homeView: LinearLayout
+    private lateinit var drawerView: LinearLayout
     private lateinit var appsContainer: LinearLayout
     private lateinit var search: EditText
-    private lateinit var drawer: LinearLayout
+    private lateinit var clock: TextView
 
     private val bg = Color.rgb(10, 10, 12)
     private val panel = Color.rgb(24, 24, 28)
@@ -27,17 +29,42 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
-        buildHome()
+        buildUi()
     }
 
     override fun onResume() {
         super.onResume()
         if (::clock.isInitialized) updateClock()
-        if (::drawer.isInitialized && drawer.visibility == View.VISIBLE) loadApps(search.text.toString())
+        if (::drawerView.isInitialized && drawerView.visibility == View.VISIBLE) {
+            loadApps(search.text.toString())
+        }
     }
 
-    private fun buildHome() {
-        val root = LinearLayout(this).apply {
+    override fun onBackPressed() {
+        if (::drawerView.isInitialized && drawerView.visibility == View.VISIBLE) {
+            closeDrawer()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    private fun buildUi() {
+        root = FrameLayout(this)
+        root.setBackgroundColor(bg)
+
+        homeView = buildHome()
+        drawerView = buildDrawer()
+
+        root.addView(homeView, FrameLayout.LayoutParams(-1, -1))
+        drawerView.visibility = View.GONE
+        root.addView(drawerView, FrameLayout.LayoutParams(-1, -1))
+
+        setContentView(root)
+        updateClock()
+    }
+
+    private fun buildHome(): LinearLayout {
+        val view = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(20, 22, 20, 16)
@@ -50,7 +77,7 @@ class MainActivity : ComponentActivity() {
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         }
-        root.addView(clock, LinearLayout.LayoutParams(-1, 72))
+        view.addView(clock, LinearLayout.LayoutParams(-1, 72))
 
         val date = TextView(this).apply {
             textSize = 14f
@@ -59,19 +86,18 @@ class MainActivity : ComponentActivity() {
             text = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR"))
                 .format(Date()).replaceFirstChar { it.uppercase() }
         }
-        root.addView(date, LinearLayout.LayoutParams(-1, 30))
+        view.addView(date, LinearLayout.LayoutParams(-1, 30))
 
-        val spacer = Space(this)
-        root.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
+        view.addView(Space(this), LinearLayout.LayoutParams(1, 0, 1f))
 
-        val message = TextView(this).apply {
+        val title = TextView(this).apply {
             text = "Middes"
             textSize = 26f
             setTextColor(white)
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
         }
-        root.addView(message, LinearLayout.LayoutParams(-1, 45))
+        view.addView(title, LinearLayout.LayoutParams(-1, 45))
 
         val subtitle = TextView(this).apply {
             text = "Seu espaço. Seus aplicativos."
@@ -79,9 +105,9 @@ class MainActivity : ComponentActivity() {
             setTextColor(gray)
             gravity = Gravity.CENTER
         }
-        root.addView(subtitle, LinearLayout.LayoutParams(-1, 30))
+        view.addView(subtitle, LinearLayout.LayoutParams(-1, 30))
 
-        val drawerButton = TextView(this).apply {
+        val open = TextView(this).apply {
             text = "☷\nAplicativos"
             textSize = 15f
             setTextColor(white)
@@ -89,7 +115,7 @@ class MainActivity : ComponentActivity() {
             setBackgroundColor(panel)
             setOnClickListener { openDrawer() }
         }
-        root.addView(drawerButton, LinearLayout.LayoutParams(170, 72).apply {
+        view.addView(open, LinearLayout.LayoutParams(170, 72).apply {
             setMargins(0, 24, 0, 16)
         })
 
@@ -115,25 +141,18 @@ class MainActivity : ComponentActivity() {
         }
         dock.addView(apps, LinearLayout.LayoutParams(64, 54))
 
-        root.addView(dock, LinearLayout.LayoutParams(-1, 58))
-
-        drawer = buildDrawer()
-        drawer.visibility = View.GONE
-        root.addView(drawer, LinearLayout.LayoutParams(-1, 0, 0f))
-
-        setContentView(root)
-        updateClock()
+        view.addView(dock, LinearLayout.LayoutParams(-1, 58))
+        return view
     }
 
     private fun buildDrawer(): LinearLayout {
-        val container = LinearLayout(this).apply {
+        val view = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(20, 22, 20, 16)
             setBackgroundColor(bg)
         }
 
-        val top = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-        }
+        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
 
         val back = TextView(this).apply {
             text = "‹"
@@ -152,7 +171,7 @@ class MainActivity : ComponentActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         top.addView(title, LinearLayout.LayoutParams(0, 52, 1f))
-        container.addView(top)
+        view.addView(top)
 
         search = EditText(this).apply {
             hint = "Pesquisar aplicativos"
@@ -163,20 +182,17 @@ class MainActivity : ComponentActivity() {
             setPadding(18, 0, 18, 0)
             setBackgroundColor(panel)
         }
-        container.addView(search, LinearLayout.LayoutParams(-1, 52).apply {
+        view.addView(search, LinearLayout.LayoutParams(-1, 52).apply {
             setMargins(0, 8, 0, 8)
         })
 
-        val scroll = ScrollView(this).apply {
-            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-        }
-
+        val scroll = ScrollView(this)
         appsContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 4, 0, 12)
         }
-        scroll.addView(appsContainer, android.widget.FrameLayout.LayoutParams(-1, -2))
-        container.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        scroll.addView(appsContainer, FrameLayout.LayoutParams(-1, -2))
+        view.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         search.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) = Unit
@@ -186,29 +202,19 @@ class MainActivity : ComponentActivity() {
             override fun afterTextChanged(e: android.text.Editable?) = Unit
         })
 
-        return container
+        return view
     }
 
     private fun openDrawer() {
-        val root = findViewById<LinearLayout>(android.R.id.content)
-        val content = root.getChildAt(0) as? LinearLayout ?: return
-
-        for (i in 0 until content.childCount) {
-            val child = content.getChildAt(i)
-            if (child === drawer) {
-                content.removeViewAt(i)
-                content.addView(drawer, i, LinearLayout.LayoutParams(-1, 0, 1f))
-                break
-            }
-        }
-
-        drawer.visibility = View.VISIBLE
+        homeView.visibility = View.GONE
+        drawerView.visibility = View.VISIBLE
         search.setText("")
         loadApps("")
     }
 
     private fun closeDrawer() {
-        drawer.visibility = View.GONE
+        drawerView.visibility = View.GONE
+        homeView.visibility = View.VISIBLE
     }
 
     private fun updateClock() {
@@ -217,8 +223,8 @@ class MainActivity : ComponentActivity() {
 
     private fun loadApps(query: String) {
         appsContainer.removeAllViews()
-        val pm = packageManager
 
+        val pm = packageManager
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
@@ -229,15 +235,16 @@ class MainActivity : ComponentActivity() {
             .filter { it.loadLabel(pm).toString().contains(query, ignoreCase = true) }
             .sortedBy { it.loadLabel(pm).toString().lowercase(Locale.getDefault()) }
 
-        var row: LinearLayout? = null
-
         apps.forEachIndexed { index, info ->
-            if (index % 4 == 0) {
-                row = LinearLayout(this).apply {
+            val row = if (index % 4 == 0) {
+                LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.TOP
+                }.also {
+                    appsContainer.addView(it, LinearLayout.LayoutParams(-1, 104))
                 }
-                appsContainer.addView(row, LinearLayout.LayoutParams(-1, 104))
+            } else {
+                appsContainer.getChildAt(appsContainer.childCount - 1) as LinearLayout
             }
 
             val item = LinearLayout(this).apply {
@@ -248,9 +255,11 @@ class MainActivity : ComponentActivity() {
                     val launch = Intent(Intent.ACTION_MAIN).apply {
                         addCategory(Intent.CATEGORY_LAUNCHER)
                         setClassName(info.activityInfo.packageName, info.activityInfo.name)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    startActivity(launch)
+                    try {
+                        startActivity(launch)
+                    } catch (_: Exception) {
+                    }
                 }
             }
 
@@ -269,7 +278,7 @@ class MainActivity : ComponentActivity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
             item.addView(label, LinearLayout.LayoutParams(-1, 30))
-            row?.addView(item, LinearLayout.LayoutParams(0, 100, 1f))
+            row.addView(item, LinearLayout.LayoutParams(0, 100, 1f))
         }
     }
 }
