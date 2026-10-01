@@ -4,7 +4,9 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var sceneStrip: LinearLayout
     private lateinit var sidebar: LinearLayout
     private lateinit var dock: LinearLayout
+private lateinit var gameModeView: GameModeView
 
     private val prefs by lazy { getSharedPreferences("middes", Context.MODE_PRIVATE) }
 
@@ -103,6 +106,11 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
         currentScene = prefs.getString("scene", "Normal") ?: "Normal"
+        // Gaming é uma sessão visual temporária: ao reabrir o launcher, volta para Normal.
+        if (currentScene == "Gaming") {
+            currentScene = "Normal"
+            prefs.edit().putString("scene", "Normal").apply()
+        }
         setupNexa()
         buildUi()
     }
@@ -128,6 +136,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onBackPressed() {
         when {
+            currentScene == "Gaming" -> applyScene("Normal", true)
             ::drawerView.isInitialized && drawerView.visibility == View.VISIBLE -> closeDrawer()
             ::deskView.isInitialized && deskView.visibility == View.VISIBLE -> closeDesk()
             ::settingsView.isInitialized && settingsView.visibility == View.VISIBLE -> closeSettings()
@@ -185,6 +194,10 @@ class MainActivity : ComponentActivity() {
         settingsView = buildSettings()
         settingsView.visibility = View.GONE
         root.addView(settingsView, FrameLayout.LayoutParams(-1, -1))
+
+        gameModeView = GameModeView(this)
+        gameModeView.visibility = View.GONE
+        root.addView(gameModeView, FrameLayout.LayoutParams(-1, -1))
 
         setContentView(root)
         applyWallpaper()
@@ -988,6 +1001,259 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun showGameMode(animate: Boolean = true) {
+        if (!::gameModeView.isInitialized) return
+        gameModeView.setSceneApps(getSceneAppPackages("Gaming", listOf(
+            "com.whatsapp",
+            "com.google.android.youtube",
+            "com.android.chrome",
+            "com.google.android.googlequicksearchbox"
+        )))
+        gameModeView.visibility = View.VISIBLE
+        gameModeView.bringToFront()
+        gameModeView.startGameAnimation(animate)
+    }
+
+    private fun hideGameMode() {
+        if (::gameModeView.isInitialized) {
+            gameModeView.stopGameAnimation()
+            gameModeView.visibility = View.GONE
+            homeView.visibility = View.VISIBLE
+            drawerView.visibility = View.GONE
+            deskView.visibility = View.GONE
+            settingsView.visibility = View.GONE
+        }
+    }
+
+    private inner class GameModeView(context: Context) : FrameLayout(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val handler = Handler(Looper.getMainLooper())
+        private var orbitAngle = 0f
+        private var orbitRadius = 0f
+        private var pulse = 0f
+        private var running = false
+        private var entrance = true
+        private var booting = false
+        private var bootStart = 0L
+        private val iconViews = mutableListOf<Pair<String, ImageView>>()
+        private val cyan = Color.rgb(110, 210, 255)
+        private val violet = Color.rgb(155, 95, 255)
+
+        private val ticker = object : Runnable {
+            override fun run() {
+                if (!running) return
+                if (booting) {
+                    invalidate()
+                    handler.postDelayed(this, 16L)
+                    return
+                }
+                orbitAngle = (orbitAngle + 0.65f) % 360f
+                pulse += 0.08f
+                if (entrance && orbitRadius < dp(116).toFloat()) {
+                    orbitRadius += dp(5).toFloat()
+                } else {
+                    entrance = false
+                    orbitRadius = dp(116).toFloat()
+                }
+                positionIcons()
+                invalidate()
+                handler.postDelayed(this, 16L)
+            }
+        }
+
+        init {
+            setWillNotDraw(false)
+            setBackgroundColor(Color.rgb(3, 4, 8))
+            alpha = 0f
+            scaleX = 1.035f
+            scaleY = 1.035f
+
+            // Controle manual para nunca deixar o usuário preso no Gaming Mode.
+            val exit = textView("SAIR  ×", 10f, Color.argb(220, 210, 220, 235), true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(12), 0, dp(12), 0)
+                background = rounded(Color.argb(150, 14, 18, 28), 18f, Color.argb(100, 110, 210, 255))
+                setOnClickListener { applyScene("Normal", true) }
+                contentDescription = "Sair do modo gaming"
+            }
+            addView(exit, LayoutParams(dp(82), dp(42), Gravity.TOP or Gravity.END).apply {
+                setMargins(0, dp(24), dp(16), 0)
+            })
+        }
+
+        fun setSceneApps(packages: List<String>) {
+            iconViews.forEach { removeView(it.second) }
+            iconViews.clear()
+            val pm = packageManager
+            packages.distinct().take(10).forEach { pkg ->
+                try {
+                    val info = pm.getApplicationInfo(pkg, 0)
+                    val icon = ImageView(this@MainActivity).apply {
+                        setImageDrawable(info.loadIcon(pm))
+                        scaleType = ImageView.ScaleType.CENTER_INSIDE
+                        setPadding(dp(11), dp(11), dp(11), dp(11))
+                        background = rounded(Color.argb(225, 13, 15, 24), 22f, Color.argb(120, 110, 210, 255))
+                        contentDescription = info.loadLabel(pm).toString()
+                        setOnClickListener { launchPackage(pkg) }
+                        alpha = 0f
+                        scaleX = 0.2f
+                        scaleY = 0.2f
+                    }
+                    addView(icon, LayoutParams(dp(62), dp(62)))
+                    iconViews.add(pkg to icon)
+                } catch (_: Exception) {}
+            }
+            requestLayout()
+        }
+
+        fun startGameAnimation(animate: Boolean) {
+            stopGameAnimation()
+            running = true
+            entrance = animate
+            booting = animate
+            bootStart = System.currentTimeMillis()
+            orbitRadius = if (animate) 0f else dp(116).toFloat()
+            alpha = if (animate) 0f else 1f
+            scaleX = if (animate) 1.035f else 1f
+            scaleY = scaleX
+
+            iconViews.forEach { pair ->
+                pair.second.alpha = if (animate) 0f else 1f
+                pair.second.scaleX = if (animate) 0.2f else 1f
+                pair.second.scaleY = pair.second.scaleX
+            }
+
+            if (animate) {
+                // Primeiro a tela normal escurece; depois o sistema é inicializado.
+                animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420L).start()
+
+                handler.postDelayed({
+                    if (!running) return@postDelayed
+                    booting = false
+                    entrance = true
+                    orbitRadius = 0f
+                    iconViews.forEachIndexed { index, pair ->
+                        pair.second.animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setStartDelay(index * 90L)
+                            .setDuration(520L)
+                            .start()
+                    }
+                    invalidate()
+                }, 1350L)
+            }
+
+            handler.post(ticker)
+        }
+
+        fun stopGameAnimation() {
+            running = false
+            handler.removeCallbacks(ticker)
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f
+            val cy = height / 2f - dp(12)
+
+            if (booting) {
+                paint.style = Paint.Style.FILL
+                paint.color = Color.rgb(3, 4, 8)
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+                val elapsed = (System.currentTimeMillis() - bootStart).coerceAtLeast(0L)
+                val pulse = (kotlin.math.sin(elapsed / 170.0) * 0.5 + 0.5).toFloat()
+
+                paint.color = Color.argb((45 + pulse * 45).toInt(), 110, 210, 255)
+                canvas.drawCircle(cx, cy, dp(20) + dp(8) * pulse, paint)
+
+                paint.color = Color.rgb(110, 210, 255)
+                paint.textAlign = Paint.Align.CENTER
+                paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+                paint.textSize = dp(16).toFloat()
+                canvas.drawText("NEXA", cx, cy - dp(8), paint)
+
+                paint.color = Color.argb(205, 190, 205, 220)
+                paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+                paint.textSize = dp(10).toFloat()
+                canvas.drawText("INICIANDO MODO GAMING", cx, cy + dp(22), paint)
+
+                paint.color = Color.argb(110, 110, 210, 255)
+                paint.textSize = dp(8).toFloat()
+                canvas.drawText("CARREGANDO SISTEMA  //  ONLINE", cx, cy + dp(40), paint)
+                return
+            }
+
+            val r = if (orbitRadius > 0f) orbitRadius else dp(116).toFloat()
+
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(1).toFloat()
+            paint.color = Color.argb(80, 110, 210, 255)
+            canvas.drawCircle(cx, cy, r + dp(30), paint)
+            paint.color = Color.argb(55, 155, 95, 255)
+            canvas.drawCircle(cx, cy, r + dp(52), paint)
+
+            for (i in 0..2) {
+                paint.color = Color.argb(38 + i * 12, 110, 210, 255)
+                canvas.drawCircle(cx, cy, dp(58 + i * 8) + kotlin.math.sin(pulse.toDouble()).toFloat() * dp(2), paint)
+            }
+
+            paint.style = Paint.Style.FILL
+            val glow = dp(40) + kotlin.math.sin(pulse.toDouble()).toFloat() * dp(3)
+            paint.color = Color.argb(28, 110, 210, 255)
+            canvas.drawCircle(cx, cy, glow + dp(18), paint)
+            paint.color = Color.argb(70, 110, 210, 255)
+            canvas.drawCircle(cx, cy, glow, paint)
+            paint.color = Color.rgb(9, 15, 24)
+            canvas.drawCircle(cx, cy, dp(28).toFloat(), paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(2).toFloat()
+            paint.color = cyan
+            canvas.drawCircle(cx, cy, dp(28).toFloat(), paint)
+
+            paint.color = Color.argb(180, 110, 210, 255)
+            paint.strokeWidth = dp(1).toFloat()
+            canvas.drawLine(cx - dp(48), cy, cx + dp(48), cy, paint)
+            canvas.drawLine(cx, cy - dp(48), cx, cy + dp(48), paint)
+
+            paint.style = Paint.Style.FILL
+            paint.color = white
+            paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            paint.textSize = dp(12).toFloat()
+            canvas.drawText("NEXA", cx, cy + dp(4), paint)
+
+            paint.color = Color.argb(210, 190, 205, 220)
+            paint.textSize = dp(10).toFloat()
+            canvas.drawText("GAMING SYSTEM", cx, cy + dp(176), paint)
+            paint.color = Color.argb(100, 110, 210, 255)
+            paint.textSize = dp(8).toFloat()
+            canvas.drawText("ONLINE  //  ORBITAL INTERFACE", cx, cy + dp(192), paint)
+        }
+
+        private fun positionIcons() {
+            val cx = width / 2f
+            val cy = height / 2f - dp(12)
+            val count = iconViews.size
+            if (count == 0 || width == 0 || height == 0) return
+            iconViews.forEachIndexed { index, pair ->
+                val angle = Math.toRadians((orbitAngle + index * (360.0 / count)) - 90.0)
+                val x = cx + kotlin.math.cos(angle).toFloat() * orbitRadius - dp(31)
+                val y = cy + kotlin.math.sin(angle).toFloat() * orbitRadius - dp(31)
+                pair.second.x = x
+                pair.second.y = y
+                pair.second.rotation = (orbitAngle * -0.35f + index * 36f) % 360f
+            }
+        }
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            positionIcons()
+        }
+    }
+
     private fun applyScene(scene: String, save: Boolean) {
         currentScene = scene
         if (save) prefs.edit().putString("scene", scene).apply()
@@ -1025,6 +1291,12 @@ class MainActivity : ComponentActivity() {
             dock.setBackgroundColor(Color.argb(215, 10, 9, 15))
         }
         if (::sidebar.isInitialized) buildQuickApps()
+
+        if (scene == "Gaming") {
+            showGameMode(save)
+        } else {
+            hideGameMode()
+        }
     }
 
     private fun showSceneChooser() {
