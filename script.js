@@ -1,9 +1,34 @@
 const savedMessages=JSON.parse(localStorage.getItem("unknown_messages")||"null");
-const state={unlocked:false,currentApp:null,notes:JSON.parse(localStorage.getItem("unknown_notes")||"[]"),messages:savedMessages||[
+const savedStory=JSON.parse(localStorage.getItem("unknown_story")||"{}");
+const state={unlocked:false,currentApp:null,notes:JSON.parse(localStorage.getItem("unknown_notes")||"[]"),story:savedStory,messages:savedMessages||[
  {name:"Número desconhecido",text:"Você não deveria ter encontrado isso.",time:"02:17",unread:true,history:["Você não deveria ter encontrado isso.","Se você está lendo esta mensagem, ainda há tempo."]},
  {name:"Mãe",text:"Me avisa quando chegar.",time:"ontem",unread:false,history:["Me avisa quando chegar."]}
 ]};
 function saveMessages(){localStorage.setItem("unknown_messages",JSON.stringify(state.messages));}
+function saveStory(){localStorage.setItem("unknown_story",JSON.stringify(state.story));}
+function addStoryMessage(name,text,history){
+ const existing=state.messages.find(m=>m.name===name);
+ if(existing){existing.text=text;existing.unread=true;existing.history=history||existing.history||[text];}
+ else state.messages.unshift({name,text,time:"agora",unread:true,history:history||[text]});
+ saveMessages();
+ showNotification(0);
+}
+function triggerStory(event){
+ if(state.story[event])return;
+ state.story[event]=true;saveStory();
+ if(event==="gallery"){
+   addStoryMessage("Número desconhecido","Você abriu a foto. Agora olhe os detalhes.");
+   toastMsg("Nova mensagem recebida");
+ }
+ if(event==="files"){
+   addStoryMessage("Número desconhecido","O arquivo não estava aqui antes. Não abra sozinho.");
+   toastMsg("Um arquivo apareceu");
+ }
+ if(event==="email"){
+   addStoryMessage("admin@unknown.local","Você realmente abriu o e-mail.");
+   toastMsg("Algo mudou nas mensagens");
+ }
+}
 
 const $=s=>document.querySelector(s);
 const lockScreen=$("#lockScreen"),homeScreen=$("#homeScreen"),appScreen=$("#appScreen"),appBody=$("#appBody"),toast=$("#toast"),notification=$("#notification");
@@ -64,7 +89,18 @@ function renderMessages(){
 function renderChat(i){
  const m=state.messages[i];m.unread=false;saveMessages();
  const history=m.history||[m.text];
- appBody.innerHTML=`<div class="app-card"><h3>${escapeHtml(m.name)}</h3><p>Conversa</p></div><div id="chat">${history.map((msg,n)=>`<div class="message-bubble ${n%2===0?"":"me"}">${escapeHtml(msg)}</div>`).join("")}</div><div class="chat-input"><input id="msgInput" placeholder="Mensagem"><button class="send" id="sendBtn">↑</button></div>`;
+ appBody.innerHTML=`<div class="app-card"><h3>${escapeHtml(m.name)}</h3><p>Conversa</p></div><div id="chat">${history.map((msg,n)=>`<div class="message-bubble ${n%2===0?"":"me"}">${escapeHtml(msg)}</div>`).join("")}</div><div class="chat-input"><input id="msgInput" placeholder="Mensagem"><button class="send" id="sendBtn">↑</button></div><div id="storyChoices"></div>`;
+ if(m.name==="Número desconhecido"&&!state.story.choiceMade){
+   $("#storyChoices").innerHTML=`<div class="app-card"><p>O que você responde?</p><button class="list-row" data-choice="ignore">“Quem é você?”</button><button class="list-row" data-choice="ask">“O que aconteceu?”</button></div>`;
+   $("#storyChoices").querySelectorAll("[data-choice]").forEach(b=>b.onclick=()=>{
+     const choice=b.dataset.choice;state.story.choiceMade=choice;saveStory();
+     const reply=choice==="ignore"?"Não importa quem eu sou. Você precisa encontrar o arquivo.":"Não posso explicar por aqui. Procure por uma foto com o nome IMG_0001.";
+     m.history=m.history||[m.text];m.history.push(reply);m.text=reply;m.time="agora";m.unread=false;saveMessages();
+     $("#chat").insertAdjacentHTML("beforeend",`<div class="message-bubble">${escapeHtml(reply)}</div>`);
+     $("#storyChoices").innerHTML="";
+     if(choice==="ask"){triggerStory("choiceAsk");}
+   });
+ }
  $("#sendBtn").onclick=()=>{
    const v=$("#msgInput").value.trim();if(!v)return;
    m.history=m.history||[m.text];m.history.push(v);m.text=v;m.time="agora";saveMessages();
