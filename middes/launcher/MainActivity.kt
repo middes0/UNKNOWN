@@ -1077,6 +1077,20 @@ private lateinit var gameModeView: GameModeView
             gravity = Gravity.CENTER_VERTICAL
             alpha = 0f
         }
+        private val orbitArea = FrameLayout(context).apply {
+            setWillNotDraw(false)
+            alpha = 0f
+        }
+        private var orbitAngle = 0.0
+        private val orbitRadius = dp(82).toFloat()
+        private val orbitTicker = object : Runnable {
+            override fun run() {
+                if (!running) return
+                orbitAngle = (orbitAngle + 0.0105) % (Math.PI * 2.0)
+                positionOrbitApps()
+                postDelayed(this, 16L)
+            }
+        }
         private val navBar = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -1122,11 +1136,8 @@ private lateinit var gameModeView: GameModeView
                 setMargins(0, 0, 0, dp(10))
             })
 
-            val spacer = Space(context)
-            content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
-
-            content.addView(appsRow, LinearLayout.LayoutParams(-1, dp(66)).apply {
-                setMargins(0, 0, 0, dp(10))
+            content.addView(orbitArea, LinearLayout.LayoutParams(-1, 0, 1f).apply {
+                setMargins(0, dp(2), 0, dp(8))
             })
             content.addView(navBar, LinearLayout.LayoutParams(-1, dp(56)))
 
@@ -1144,6 +1155,23 @@ private lateinit var gameModeView: GameModeView
             buildSceneRow()
             buildPerformanceRow()
             buildNavigation()
+        }
+
+        private fun positionOrbitApps() {
+            if (orbitArea.width <= 0 || orbitArea.height <= 0) return
+            val cx = orbitArea.width / 2f
+            val cy = orbitArea.height / 2f
+            val count = orbitArea.childCount
+            if (count == 0) return
+            val radius = minOf(orbitRadius, orbitArea.width * 0.40f, orbitArea.height * 0.40f).coerceAtLeast(dp(48).toFloat())
+            for (i in 0 until count) {
+                val child = orbitArea.getChildAt(i)
+                val angle = orbitAngle + (Math.PI * 2.0 * i / count.toDouble())
+                val x = cx + kotlin.math.cos(angle).toFloat() * radius
+                val y = cy + kotlin.math.sin(angle).toFloat() * radius
+                child.translationX = x - child.width / 2f
+                child.translationY = y - child.height / 2f
+            }
         }
 
         private fun buildSceneRow() {
@@ -1219,26 +1247,28 @@ private lateinit var gameModeView: GameModeView
         }
 
         fun setSceneApps(packages: List<String>) {
+            orbitArea.removeAllViews()
             appsRow.removeAllViews()
             val pm = packageManager
-            packages.distinct().take(6).forEach { pkg ->
+            packages.distinct().take(6).forEachIndexed { index, pkg ->
                 try {
                     val info = pm.getApplicationInfo(pkg, 0)
                     val item = FrameLayout(context).apply {
-                        background = rounded(Color.argb(210, 15, 13, 22), 19f)
+                        background = rounded(Color.argb(215, 15, 13, 22), 22f)
                         setOnClickListener { launchPackage(pkg) }
                         contentDescription = info.loadLabel(pm).toString()
+                        alpha = 0f
                     }
                     item.addView(ImageView(context).apply {
                         setImageDrawable(info.loadIcon(pm))
                         scaleType = ImageView.ScaleType.CENTER_INSIDE
                         setPadding(dp(11), dp(11), dp(11), dp(11))
                     }, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.CENTER))
-                    appsRow.addView(item, LinearLayout.LayoutParams(dp(62), dp(62)).apply {
-                        setMargins(0, 0, dp(8), 0)
-                    })
+                    orbitArea.addView(item, FrameLayout.LayoutParams(dp(62), dp(62)))
+                    item.animate().alpha(1f).setStartDelay((index * 100L).coerceAtMost(500L)).setDuration(320L).start()
                 } catch (_: Exception) {}
             }
+            orbitArea.post { positionOrbitApps() }
         }
 
         private fun updateGameClock() {
@@ -1264,6 +1294,7 @@ private lateinit var gameModeView: GameModeView
             running = true
             updateGameClock()
             buildPerformanceRow()
+            setSceneApps(getSceneAppPackages("Gaming", emptyList()))
 
             if (!animate) {
                 booting = false
@@ -1273,7 +1304,7 @@ private lateinit var gameModeView: GameModeView
                 sceneLabel.alpha = 1f
                 sceneRow.alpha = 1f
                 performanceRow.alpha = 1f
-                appsRow.alpha = 1f
+                orbitArea.alpha = 1f
                 navBar.alpha = 1f
                 bootStatus.visibility = View.GONE
                 invalidate()
@@ -1287,7 +1318,7 @@ private lateinit var gameModeView: GameModeView
             sceneLabel.alpha = 0f
             sceneRow.alpha = 0f
             performanceRow.alpha = 0f
-            appsRow.alpha = 0f
+            orbitArea.alpha = 0f
             navBar.alpha = 0f
             bootStatus.visibility = View.VISIBLE
             bootStatus.alpha = 0f
@@ -1310,7 +1341,7 @@ private lateinit var gameModeView: GameModeView
                 animateModule(sceneLabel, 700L, 7)
                 animateModule(sceneRow, 760L, 7)
                 animateModule(performanceRow, 980L, 8)
-                animateModule(appsRow, 1280L, 8)
+                animateModule(orbitArea, 1280L, 8)
                 animateModule(navBar, 1480L, 6)
 
                 handler.postDelayed({
@@ -1324,6 +1355,7 @@ private lateinit var gameModeView: GameModeView
             }, 1160L)
 
             handler.post(gameTicker)
+            handler.postDelayed(orbitTicker, 1320L)
         }
 
         private val gameTicker = object : Runnable {
@@ -1351,6 +1383,7 @@ private lateinit var gameModeView: GameModeView
             running = false
             booting = false
             handler.removeCallbacks(gameTicker)
+            handler.removeCallbacks(orbitTicker)
             tone?.release()
             tone = null
             animate().cancel()
@@ -1360,6 +1393,7 @@ private lateinit var gameModeView: GameModeView
             sceneRow.animate().cancel()
             performanceRow.animate().cancel()
             appsRow.animate().cancel()
+            orbitArea.animate().cancel()
             navBar.animate().cancel()
         }
 
