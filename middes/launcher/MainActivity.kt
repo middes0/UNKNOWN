@@ -1,6 +1,8 @@
 package com.middes.launcher
 
 import android.app.AlertDialog
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -1020,236 +1022,361 @@ private lateinit var gameModeView: GameModeView
             gameModeView.visibility = View.GONE
             homeView.visibility = View.VISIBLE
             drawerView.visibility = View.GONE
-            deskView.visibility = View.GONE
-            settingsView.visibility = View.GONE
-        }
-    }
-
-    private inner class GameModeView(context: Context) : FrameLayout(context) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            deskView.visibility = View.G    private inner class GameModeView(context: Context) : FrameLayout(context) {
         private val handler = Handler(Looper.getMainLooper())
-        private var orbitAngle = 0f
-        private var orbitRadius = 0f
-        private var pulse = 0f
         private var running = false
-        private var entrance = true
         private var booting = false
         private var bootStart = 0L
-        private val iconViews = mutableListOf<Pair<String, ImageView>>()
-        private val cyan = Color.rgb(110, 210, 255)
-        private val violet = Color.rgb(155, 95, 255)
+        private var tone: ToneGenerator? = null
 
-        private val ticker = object : Runnable {
-            override fun run() {
-                if (!running) return
-                if (booting) {
-                    invalidate()
-                    handler.postDelayed(this, 16L)
-                    return
-                }
-                orbitAngle = (orbitAngle + 0.65f) % 360f
-                pulse += 0.08f
-                if (entrance && orbitRadius < dp(116).toFloat()) {
-                    orbitRadius += dp(5).toFloat()
-                } else {
-                    entrance = false
-                    orbitRadius = dp(116).toFloat()
-                }
-                positionIcons()
-                invalidate()
-                handler.postDelayed(this, 16L)
-            }
+        private val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(28), dp(18), dp(12))
+            alpha = 0f
+        }
+
+        private val systemInfo = textView("GAMING MODE  •  SISTEMA PRONTO", 9f, muted, true).apply {
+            letterSpacing = 0.10f
+        }
+        private val gameClock = textView("", 58f, white).apply {
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            letterSpacing = 0.02f
+        }
+        private val gameDate = textView("", 10f, gray).apply {
+            gravity = Gravity.CENTER
+        }
+        private val summary = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            background = rounded(panelStrong, 24f)
+            alpha = 0f
+            translationY = dp(10).toFloat()
+        }
+        private val sceneLabel = textView("CENA ATUAL", 9.5f, muted, true).apply {
+            letterSpacing = 0.12f
+            alpha = 0f
+        }
+        private val sceneRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            alpha = 0f
+        }
+        private val performanceRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            alpha = 0f
+        }
+        private val appsRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            alpha = 0f
+        }
+        private val navBar = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            background = rounded(Color.argb(220, 10, 9, 15), 25f)
+            alpha = 0f
+        }
+
+        private val bootStatus = textView("INICIALIZANDO", 9f, Color.argb(150, 215, 205, 235), true).apply {
+            gravity = Gravity.CENTER
+            letterSpacing = 0.10f
         }
 
         init {
             setWillNotDraw(false)
-            setBackgroundColor(Color.rgb(3, 4, 8))
-            alpha = 0f
-            scaleX = 1.035f
-            scaleY = 1.035f
+            setBackgroundColor(Color.BLACK)
 
-            // Controle manual para nunca deixar o usuário preso no Gaming Mode.
-            val exit = textView("SAIR  ×", 10f, Color.argb(220, 210, 220, 235), true).apply {
+            addView(content, LayoutParams(-1, -1))
+
+            content.addView(systemInfo, LinearLayout.LayoutParams(-1, dp(24)))
+            content.addView(gameClock, LinearLayout.LayoutParams(-1, dp(70)).apply {
+                setMargins(0, dp(8), 0, 0)
+            })
+            content.addView(gameDate, LinearLayout.LayoutParams(-1, dp(22)))
+
+            val summaryTitle = textView("SEU RESUMO", 9.5f, muted, true).apply {
+                letterSpacing = 0.12f
+            }
+            summary.addView(summaryTitle, LinearLayout.LayoutParams(-1, dp(18)))
+            summary.addView(textView("Tudo pronto para jogar.", 16f, white, true),
+                LinearLayout.LayoutParams(-1, dp(26)))
+            summary.addView(textView("Seu ambiente Gaming está ativo e otimizado.", 10.5f, gray),
+                LinearLayout.LayoutParams(-1, dp(22)))
+            content.addView(summary, LinearLayout.LayoutParams(-1, dp(82)).apply {
+                setMargins(0, dp(10), 0, dp(12))
+            })
+
+            content.addView(sceneLabel, LinearLayout.LayoutParams(-1, dp(20)))
+            content.addView(sceneRow, LinearLayout.LayoutParams(-1, dp(46)).apply {
+                setMargins(0, dp(3), 0, dp(10))
+            })
+
+            content.addView(performanceRow, LinearLayout.LayoutParams(-1, dp(78)).apply {
+                setMargins(0, 0, 0, dp(10))
+            })
+
+            val spacer = Space(context)
+            content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
+
+            content.addView(appsRow, LinearLayout.LayoutParams(-1, dp(66)).apply {
+                setMargins(0, 0, 0, dp(10))
+            })
+            content.addView(navBar, LinearLayout.LayoutParams(-1, dp(56)))
+
+            val exit = textView("SAIR", 9f, Color.argb(185, 220, 215, 230), true).apply {
                 gravity = Gravity.CENTER
-                setPadding(dp(12), 0, dp(12), 0)
-                background = rounded(Color.argb(150, 14, 18, 28), 18f, Color.argb(100, 110, 210, 255))
+                background = rounded(Color.argb(120, 20, 17, 27), 17f)
                 setOnClickListener { applyScene("Normal", true) }
                 contentDescription = "Sair do modo gaming"
             }
-            addView(exit, LayoutParams(dp(82), dp(42), Gravity.TOP or Gravity.END).apply {
-                setMargins(0, dp(24), dp(16), 0)
+            addView(exit, LayoutParams(dp(58), dp(34), Gravity.TOP or Gravity.END).apply {
+                setMargins(0, dp(24), dp(14), 0)
             })
+
+            addView(bootStatus, LayoutParams(dp(170), dp(28), Gravity.CENTER))
+            buildSceneRow()
+            buildPerformanceRow()
+            buildNavigation()
+        }
+
+        private fun buildSceneRow() {
+            sceneRow.removeAllViews()
+            listOf("Normal", "Gaming", "Estudo", "Trabalho", "Noite").forEach { scene ->
+                val button = textView(scene, 9.5f, if (scene == "Gaming") white else gray, true).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(dp(8), 0, dp(8), 0)
+                    background = rounded(
+                        if (scene == "Gaming") Color.argb(205, 91, 52, 132) else Color.argb(135, 18, 15, 24),
+                        17f
+                    )
+                    setOnClickListener { applyScene(scene, true) }
+                }
+                sceneRow.addView(button, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                })
+            }
+        }
+
+        private fun metric(title: String, value: String): LinearLayout {
+            return LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = rounded(Color.argb(145, 15, 13, 22), 19f)
+                addView(textView(title, 8.5f, muted, true).apply {
+                    gravity = Gravity.CENTER
+                    letterSpacing = 0.06f
+                }, LinearLayout.LayoutParams(-1, dp(18)))
+                addView(textView(value, 14f, white, true).apply {
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(-1, dp(24)))
+            }
+        }
+
+        private fun buildPerformanceRow() {
+            performanceRow.removeAllViews()
+            val bm = getSystemService(BATTERY_SERVICE) as BatteryManager
+            val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            val temperature = try {
+                val intent = registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                val raw = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE) ?: Int.MIN_VALUE
+                if (raw != Int.MIN_VALUE && raw > 0) String.format(Locale.getDefault(), "%.1f°C", raw / 10f) else "—"
+            } catch (_: Exception) { "—" }
+
+            val metrics = listOf(
+                metric("FPS", "60"),
+                metric("DESEMPENHO", "ALTO"),
+                metric("TEMP.", temperature),
+                metric("BATERIA", if (battery >= 0) "$battery%" else "—")
+            )
+            metrics.forEach { performanceRow.addView(it, LinearLayout.LayoutParams(0, dp(72), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            }) }
+        }
+
+        private fun buildNavigation() {
+            navBar.removeAllViews()
+            listOf("INÍCIO", "APPS", "NEXA").forEachIndexed { index, label ->
+                val item = textView(label, 8.5f, if (index == 0) purpleBright else gray, true).apply {
+                    gravity = Gravity.CENTER
+                    letterSpacing = 0.08f
+                    setOnClickListener {
+                        when (index) {
+                            0 -> applyScene("Normal", true)
+                            1 -> openDrawer()
+                            2 -> requestNexaMicrophone()
+                        }
+                    }
+                }
+                navBar.addView(item, LinearLayout.LayoutParams(0, dp(48), 1f))
+            }
         }
 
         fun setSceneApps(packages: List<String>) {
-            iconViews.forEach { removeView(it.second) }
-            iconViews.clear()
+            appsRow.removeAllViews()
             val pm = packageManager
-            packages.distinct().take(10).forEach { pkg ->
+            packages.distinct().take(6).forEach { pkg ->
                 try {
                     val info = pm.getApplicationInfo(pkg, 0)
-                    val icon = ImageView(this@MainActivity).apply {
+                    val item = FrameLayout(context).apply {
+                        background = rounded(Color.argb(210, 15, 13, 22), 19f)
+                        setOnClickListener { launchPackage(pkg) }
+                        contentDescription = info.loadLabel(pm).toString()
+                    }
+                    item.addView(ImageView(context).apply {
                         setImageDrawable(info.loadIcon(pm))
                         scaleType = ImageView.ScaleType.CENTER_INSIDE
                         setPadding(dp(11), dp(11), dp(11), dp(11))
-                        background = rounded(Color.argb(225, 13, 15, 24), 22f, Color.argb(120, 110, 210, 255))
-                        contentDescription = info.loadLabel(pm).toString()
-                        setOnClickListener { launchPackage(pkg) }
-                        alpha = 0f
-                        scaleX = 0.2f
-                        scaleY = 0.2f
-                    }
-                    addView(icon, LayoutParams(dp(62), dp(62)))
-                    iconViews.add(pkg to icon)
+                    }, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.CENTER))
+                    appsRow.addView(item, LinearLayout.LayoutParams(dp(62), dp(62)).apply {
+                        setMargins(0, 0, dp(8), 0)
+                    })
                 } catch (_: Exception) {}
             }
-            requestLayout()
+        }
+
+        private fun updateGameClock() {
+            val now = Date()
+            gameClock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
+            gameDate.text = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR"))
+                .format(now).replaceFirstChar { it.uppercaseChar() }
+        }
+
+        private fun animateModule(view: View, delay: Long, distance: Int = 8) {
+            view.alpha = 0f
+            view.translationY = dp(distance).toFloat()
+            view.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay(delay)
+                .setDuration(360L)
+                .start()
         }
 
         fun startGameAnimation(animate: Boolean) {
             stopGameAnimation()
             running = true
-            entrance = animate
-            booting = animate
-            bootStart = System.currentTimeMillis()
-            orbitRadius = if (animate) 0f else dp(116).toFloat()
-            alpha = if (animate) 0f else 1f
-            scaleX = if (animate) 1.035f else 1f
-            scaleY = scaleX
+            updateGameClock()
+            buildPerformanceRow()
 
-            iconViews.forEach { pair ->
-                pair.second.alpha = if (animate) 0f else 1f
-                pair.second.scaleX = if (animate) 0.2f else 1f
-                pair.second.scaleY = pair.second.scaleX
+            if (!animate) {
+                booting = false
+                content.alpha = 1f
+                summary.alpha = 1f
+                summary.translationY = 0f
+                sceneLabel.alpha = 1f
+                sceneRow.alpha = 1f
+                performanceRow.alpha = 1f
+                appsRow.alpha = 1f
+                navBar.alpha = 1f
+                bootStatus.visibility = View.GONE
+                invalidate()
+                return
             }
 
-            if (animate) {
-                // Primeiro a tela normal escurece; depois o sistema é inicializado.
-                animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420L).start()
+            booting = true
+            bootStart = System.currentTimeMillis()
+            content.alpha = 0f
+            summary.alpha = 0f
+            sceneLabel.alpha = 0f
+            sceneRow.alpha = 0f
+            performanceRow.alpha = 0f
+            appsRow.alpha = 0f
+            navBar.alpha = 0f
+            bootStatus.visibility = View.VISIBLE
+            bootStatus.alpha = 0f
+
+            // A tela normal permanece visível por um instante antes de escurecer.
+            handler.postDelayed({
+                if (!running) return@postDelayed
+                animate().alpha(1f).setDuration(760L).start()
+            }, 420L)
+
+            handler.postDelayed({
+                if (!running) return@postDelayed
+                playStartupTone()
+                bootStatus.animate().alpha(1f).setDuration(260L).start()
+                content.alpha = 1f
+                animateModule(systemInfo, 120L, 5)
+                animateModule(gameClock, 260L, 7)
+                animateModule(gameDate, 320L, 5)
+                animateModule(summary, 480L, 9)
+                animateModule(sceneLabel, 700L, 7)
+                animateModule(sceneRow, 760L, 7)
+                animateModule(performanceRow, 980L, 8)
+                animateModule(appsRow, 1280L, 8)
+                animateModule(navBar, 1480L, 6)
 
                 handler.postDelayed({
                     if (!running) return@postDelayed
                     booting = false
-                    entrance = true
-                    orbitRadius = 0f
-                    iconViews.forEachIndexed { index, pair ->
-                        pair.second.animate()
-                            .alpha(1f)
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setStartDelay(index * 90L)
-                            .setDuration(520L)
-                            .start()
-                    }
+                    bootStatus.animate().alpha(0f).setDuration(220L).withEndAction {
+                        bootStatus.visibility = View.GONE
+                    }.start()
                     invalidate()
-                }, 1350L)
-            }
+                }, 1820L)
+            }, 1160L)
 
-            handler.post(ticker)
+            handler.post(gameTicker)
+        }
+
+        private val gameTicker = object : Runnable {
+            override fun run() {
+                if (!running) return
+                if (booting) invalidate()
+                handler.postDelayed(this, 32L)
+            }
+        }
+
+        private fun playStartupTone() {
+            try {
+                tone?.release()
+                tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 32)
+                tone?.startTone(ToneGenerator.TONE_PROP_BEEP2, 140)
+                handler.postDelayed({
+                    try {
+                        tone?.startTone(ToneGenerator.TONE_PROP_BEEP, 90)
+                    } catch (_: Exception) {}
+                }, 90L)
+            } catch (_: Exception) {}
         }
 
         fun stopGameAnimation() {
             running = false
-            handler.removeCallbacks(ticker)
+            booting = false
+            handler.removeCallbacks(gameTicker)
+            tone?.release()
+            tone = null
+            animate().cancel()
+            content.animate().cancel()
+            summary.animate().cancel()
+            sceneLabel.animate().cancel()
+            sceneRow.animate().cancel()
+            performanceRow.animate().cancel()
+            appsRow.animate().cancel()
+            navBar.animate().cancel()
         }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
+            if (!booting) return
+
+            val elapsed = (System.currentTimeMillis() - bootStart).coerceAtLeast(0L)
+            val glow = (kotlin.math.sin(elapsed / 230.0) * 0.5 + 0.5).toFloat()
             val cx = width / 2f
-            val cy = height / 2f - dp(12)
+            val cy = height / 2f
 
-            if (booting) {
-                paint.style = Paint.Style.FILL
-                paint.color = Color.rgb(3, 4, 8)
-                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-
-                val elapsed = (System.currentTimeMillis() - bootStart).coerceAtLeast(0L)
-                val pulse = (kotlin.math.sin(elapsed / 170.0) * 0.5 + 0.5).toFloat()
-
-                paint.color = Color.argb((45 + pulse * 45).toInt(), 110, 210, 255)
-                canvas.drawCircle(cx, cy, dp(20) + dp(8) * pulse, paint)
-
-                paint.color = Color.rgb(110, 210, 255)
-                paint.textAlign = Paint.Align.CENTER
-                paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-                paint.textSize = dp(16).toFloat()
-                canvas.drawText("NEXA", cx, cy - dp(8), paint)
-
-                paint.color = Color.argb(205, 190, 205, 220)
-                paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-                paint.textSize = dp(10).toFloat()
-                canvas.drawText("INICIANDO MODO GAMING", cx, cy + dp(22), paint)
-
-                paint.color = Color.argb(110, 110, 210, 255)
-                paint.textSize = dp(8).toFloat()
-                canvas.drawText("CARREGANDO SISTEMA  //  ONLINE", cx, cy + dp(40), paint)
-                return
-            }
-
-            val r = if (orbitRadius > 0f) orbitRadius else dp(116).toFloat()
-
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = dp(1).toFloat()
-            paint.color = Color.argb(80, 110, 210, 255)
-            canvas.drawCircle(cx, cy, r + dp(30), paint)
-            paint.color = Color.argb(55, 155, 95, 255)
-            canvas.drawCircle(cx, cy, r + dp(52), paint)
-
-            for (i in 0..2) {
-                paint.color = Color.argb(38 + i * 12, 110, 210, 255)
-                canvas.drawCircle(cx, cy, dp(58 + i * 8) + kotlin.math.sin(pulse.toDouble()).toFloat() * dp(2), paint)
-            }
-
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
             paint.style = Paint.Style.FILL
-            val glow = dp(40) + kotlin.math.sin(pulse.toDouble()).toFloat() * dp(3)
-            paint.color = Color.argb(28, 110, 210, 255)
-            canvas.drawCircle(cx, cy, glow + dp(18), paint)
-            paint.color = Color.argb(70, 110, 210, 255)
-            canvas.drawCircle(cx, cy, glow, paint)
-            paint.color = Color.rgb(9, 15, 24)
-            canvas.drawCircle(cx, cy, dp(28).toFloat(), paint)
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = dp(2).toFloat()
-            paint.color = cyan
-            canvas.drawCircle(cx, cy, dp(28).toFloat(), paint)
-
-            paint.color = Color.argb(180, 110, 210, 255)
-            paint.strokeWidth = dp(1).toFloat()
-            canvas.drawLine(cx - dp(48), cy, cx + dp(48), cy, paint)
-            canvas.drawLine(cx, cy - dp(48), cx, cy + dp(48), paint)
-
-            paint.style = Paint.Style.FILL
-            paint.color = white
-            paint.textAlign = Paint.Align.CENTER
-            paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            paint.textSize = dp(12).toFloat()
-            canvas.drawText("NEXA", cx, cy + dp(4), paint)
-
-            paint.color = Color.argb(210, 190, 205, 220)
-            paint.textSize = dp(10).toFloat()
-            canvas.drawText("GAMING SYSTEM", cx, cy + dp(176), paint)
-            paint.color = Color.argb(100, 110, 210, 255)
-            paint.textSize = dp(8).toFloat()
-            canvas.drawText("ONLINE  //  ORBITAL INTERFACE", cx, cy + dp(192), paint)
+            paint.color = Color.argb((18 + glow * 18).toInt(), 125, 78, 190)
+            canvas.drawCircle(cx, cy, dp(24) + dp(7) * glow, paint)
+            paint.color = Color.argb((8 + glow * 8).toInt(), 168, 112, 240)
+            canvas.drawCircle(cx, cy, dp(54) + dp(12) * glow, paint)
         }
+    }
 
-        private fun positionIcons() {
-            val cx = width / 2f
-            val cy = height / 2f - dp(12)
-            val count = iconViews.size
-            if (count == 0 || width == 0 || height == 0) return
-            iconViews.forEachIndexed { index, pair ->
-                val angle = Math.toRadians((orbitAngle + index * (360.0 / count)) - 90.0)
-                val x = cx + kotlin.math.cos(angle).toFloat() * orbitRadius - dp(31)
-                val y = cy + kotlin.math.sin(angle).toFloat() * orbitRadius - dp(31)
-                pair.second.x = x
-                pair.second.y = y
-                pair.second.rotation = (orbitAngle * -0.35f + index * 36f) % 360f
-            }
-        }
-
-        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-            super.onSizeChanged(w, h, oldw, oldh)
+anged(w, h, oldw, oldh)
             positionIcons()
         }
     }
