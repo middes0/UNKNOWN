@@ -579,7 +579,7 @@ class MainActivity : ComponentActivity() {
                 val active = b.text.toString() == scene
                 b.setTextColor(if (active) white else gray)
                 b.background = rounded(
-                    if (active) Color.argb(210, sceneColor.red(), sceneColor.green(), sceneColor.blue())
+                    if (active) Color.argb(210, Color.red(sceneColor), Color.green(sceneColor), Color.blue(sceneColor))
                     else Color.argb(145, 18, 15, 25),
                     18f
                 )
@@ -646,7 +646,7 @@ class MainActivity : ComponentActivity() {
         val now = Date()
         clock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
         dateText.text = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR"))
-            .format(now).replaceFirstChar { it.uppercase() }
+            .format(now).replaceFirstChar { it.uppercaseChar() }
 
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         greetingText.text = when (currentScene) {
@@ -731,7 +731,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun Int.red(): Int = Color.red(this)
-    private fun Int.green(): Int = Color.green(this)
-    private fun Int.blue(): Int = Color.blue(this)
 }
