@@ -319,34 +319,33 @@ class MainActivity : ComponentActivity() {
     private fun buildQuickApps() {
         sidebar.removeAllViews()
         val pm = packageManager
-        val candidates = listOf(
+        val defaultCandidates = listOf(
             "com.whatsapp",
             "com.google.android.youtube",
             "com.android.chrome",
             "com.google.android.googlequicksearchbox"
         )
+        val selectedPackages = getSceneAppPackages(currentScene, defaultCandidates)
 
-        val installed = candidates.mapNotNull { pkg ->
+        selectedPackages.forEach { pkg ->
             try {
                 val info = pm.getApplicationInfo(pkg, 0)
-                Triple(pkg, info.loadIcon(pm), info.loadLabel(pm).toString())
-            } catch (_: Exception) { null }
-        }
-
-        installed.forEach { (pkg, icon, label) ->
-            val button = FrameLayout(this).apply {
-                background = rounded(Color.argb(205, 15, 13, 22), 19f)
-                setOnClickListener { launchPackage(pkg) }
-            }
-            button.addView(ImageView(this).apply {
-                setImageDrawable(icon)
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                contentDescription = label
-            }, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.CENTER))
-            sidebar.addView(button, LinearLayout.LayoutParams(dp(62), dp(62)).apply {
-                setMargins(0, 0, dp(8), 0)
-            })
+                val label = info.loadLabel(pm).toString()
+                val button = FrameLayout(this).apply {
+                    background = rounded(Color.argb(205, 15, 13, 22), 19f)
+                    setOnClickListener { launchPackage(pkg) }
+                    contentDescription = label
+                }
+                button.addView(ImageView(this).apply {
+                    setImageDrawable(info.loadIcon(pm))
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    setPadding(dp(12), dp(12), dp(12), dp(12))
+                    contentDescription = label
+                }, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.CENTER))
+                sidebar.addView(button, LinearLayout.LayoutParams(dp(62), dp(62)).apply {
+                    setMargins(0, 0, dp(8), 0)
+                })
+            } catch (_: Exception) {}
         }
 
         val apps = FrameLayout(this).apply {
@@ -358,6 +357,75 @@ class MainActivity : ComponentActivity() {
         }, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.CENTER))
         sidebar.addView(apps, LinearLayout.LayoutParams(dp(62), dp(62)))
     }
+
+    private fun sceneAppsKey(scene: String): String =
+        "scene_apps_" + normalizeSceneName(scene)
+
+    private fun normalizeSceneName(scene: String): String =
+        scene.lowercase(Locale.getDefault()).replace("ã", "a").replace("ç", "c")
+
+    private fun getSceneAppPackages(scene: String, defaults: List<String>): List<String> {
+        if (!prefs.contains(sceneAppsKey(scene))) return defaults
+        return prefs.getStringSet(sceneAppsKey(scene), emptySet()).orEmpty().toList()
+    }
+
+    private fun showSceneAppsChooser() {
+        val scenes = arrayOf("Normal", "Gaming", "Estudo", "Trabalho", "Noite")
+        val sceneLabels = scenes.map { scene ->
+            val count = getSceneAppPackages(scene, emptyList()).size
+            if (prefs.contains(sceneAppsKey(scene))) "$scene ($count apps)" else "$scene (padrão)"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Aplicativos das cenas")
+            .setItems(sceneLabels) { _, which ->
+                showAppsForScene(scenes[which])
+            }
+            .setNegativeButton("Fechar", null)
+            .show()
+    }
+
+    private fun showAppsForScene(scene: String) {
+        val pm = packageManager
+        val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+
+        val apps = pm.queryIntentActivities(launchIntent, 0)
+            .filter { it.activityInfo.packageName != packageName }
+            .distinctBy { it.activityInfo.packageName }
+            .sortedBy { it.loadLabel(pm).toString().lowercase(Locale.getDefault()) }
+
+        val defaultCandidates = listOf(
+            "com.whatsapp",
+            "com.google.android.youtube",
+            "com.android.chrome",
+            "com.google.android.googlequicksearchbox"
+        )
+        val selected = getSceneAppPackages(scene, defaultCandidates).toMutableSet()
+        val checked = apps.map { selected.contains(it.activityInfo.packageName) }.toBooleanArray()
+        val labels = apps.map { it.loadLabel(pm).toString() }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Apps no modo $scene")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                val pkg = apps[which].activityInfo.packageName
+                if (isChecked) selected.add(pkg) else selected.remove(pkg)
+            }
+            .setPositiveButton("Salvar") { _, _ ->
+                prefs.edit().putStringSet(sceneAppsKey(scene), selected).apply()
+                if (currentScene == scene && ::sidebar.isInitialized) buildQuickApps()
+                Toast.makeText(this, "Apps do modo $scene atualizados.", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Restaurar padrão") { _, _ ->
+                prefs.edit().remove(sceneAppsKey(scene)).apply()
+                if (currentScene == scene && ::sidebar.isInitialized) buildQuickApps()
+                Toast.makeText(this, "Padrão restaurado.", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
 
     private fun buildDock() {
         dock.removeAllViews()
@@ -543,6 +611,7 @@ class MainActivity : ComponentActivity() {
 
         settingsRow(list, "Papel de parede", "Escolher uma imagem da galeria") { chooseWallpaper() }
         settingsRow(list, "Cena", "Normal, Gaming, Estudo, Trabalho ou Noite") { showSceneChooser() }
+        settingsRow(list, "Aplicativos das cenas", "Escolha quais apps aparecem em cada modo") { showSceneAppsChooser() }
         settingsRow(list, "My Desk", "Central de atalhos e informações") { openDesk() }
         settingsRow(list, "Aplicativos", "Abrir a gaveta e pesquisar apps") { openDrawer() }
         settingsRow(list, "Modo escuro do fundo", "Reaplicar a camada de escurecimento") {
