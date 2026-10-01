@@ -32,7 +32,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var search: EditText
     private lateinit var clock: TextView
     private lateinit var dateText: TextView
-    private lateinit var sceneText: TextView
     private lateinit var batteryText: TextView
     private lateinit var greetingText: TextView
     private lateinit var sceneStrip: LinearLayout
@@ -566,7 +565,6 @@ class MainActivity : ComponentActivity() {
             else -> purpleBright
         }
 
-        sceneText.text = scene
         greetingText.text = when (scene) {
             "Gaming" -> "Tudo pronto para jogar."
             "Estudo" -> "Foco ativado."
@@ -666,7 +664,6 @@ class MainActivity : ComponentActivity() {
         val bm = getSystemService(BATTERY_SERVICE) as BatteryManager
         val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         batteryText.text = if (battery >= 0) "$battery%" else "—"
-        sceneText.text = currentScene
     }
 
     private fun launchPackage(packageName: String) {
