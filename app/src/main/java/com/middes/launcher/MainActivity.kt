@@ -1033,7 +1033,7 @@ private lateinit var gameModeView: GameModeView
                 orbitAngle = (orbitAngle + 0.65f) % 360f
                 pulse += 0.08f
                 if (entrance && orbitRadius < dp(116).toFloat()) {
-                    orbitRadius += dp(4.5f)
+                    orbitRadius += dp(5).toFloat()
                 } else {
                     entrance = false
                     orbitRadius = dp(116).toFloat()
@@ -1135,7 +1135,7 @@ private lateinit var gameModeView: GameModeView
             paint.color = Color.argb(70, 110, 210, 255)
             canvas.drawCircle(cx, cy, glow, paint)
             paint.color = Color.rgb(9, 15, 24)
-            canvas.drawCircle(cx, cy, dp(28), paint)
+            canvas.drawCircle(cx, cy, dp(28).toFloat(), paint)
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = dp(2).toFloat()
             paint.color = cyan
