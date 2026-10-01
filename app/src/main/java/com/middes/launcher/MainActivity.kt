@@ -1022,7 +1022,8 @@ private lateinit var gameModeView: GameModeView
             gameModeView.visibility = View.GONE
             homeView.visibility = View.VISIBLE
             drawerView.visibility = View.GONE
-            deskView.visibility = View.G    private inner class GameModeView(context: Context) : FrameLayout(context) {
+            deskView.visibility = View.GONE
+            private inner class GameModeView(context: Context) : FrameLayout(context) {
         private val handler = Handler(Looper.getMainLooper())
         private var running = false
         private var booting = false
@@ -1375,10 +1376,6 @@ private lateinit var gameModeView: GameModeView
             canvas.drawCircle(cx, cy, dp(54) + dp(12) * glow, paint)
         }
     }
-
-anged(w, h, oldw, oldh)
-            positionIcons()
-        }
     }
 
     private fun applyScene(scene: String, save: Boolean) {
