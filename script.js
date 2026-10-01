@@ -1,7 +1,12 @@
-const state={unlocked:false,currentApp:null,notes:JSON.parse(localStorage.getItem("unknown_notes")||"[]"),messages:[{name:"Número desconhecido",text:"Você não deveria ter encontrado isso.",time:"02:17",unread:true},{name:"Mãe",text:"Me avisa quando chegar.",time:"ontem",unread:false}]};
+const savedMessages=JSON.parse(localStorage.getItem("unknown_messages")||"null");
+const state={unlocked:false,currentApp:null,notes:JSON.parse(localStorage.getItem("unknown_notes")||"[]"),messages:savedMessages||[
+ {name:"Número desconhecido",text:"Você não deveria ter encontrado isso.",time:"02:17",unread:true,history:["Você não deveria ter encontrado isso.","Se você está lendo esta mensagem, ainda há tempo."]},
+ {name:"Mãe",text:"Me avisa quando chegar.",time:"ontem",unread:false,history:["Me avisa quando chegar."]}
+]};
+function saveMessages(){localStorage.setItem("unknown_messages",JSON.stringify(state.messages));}
 
 const $=s=>document.querySelector(s);
-const lockScreen=$("#lockScreen"),homeScreen=$("#homeScreen"),appScreen=$("#appScreen"),appBody=$("#appBody"),toast=$("#toast");
+const lockScreen=$("#lockScreen"),homeScreen=$("#homeScreen"),appScreen=$("#appScreen"),appBody=$("#appBody"),toast=$("#toast"),notification=$("#notification");
 
 function clock(){
  const d=new Date();
@@ -15,6 +20,7 @@ clock(); setInterval(clock,1000);
 function unlock(){
  if(state.unlocked)return;
  state.unlocked=true; lockScreen.classList.add("hidden"); homeScreen.classList.remove("hidden"); homeScreen.classList.add("fade-in");
+ setTimeout(()=>showNotification(0),3500);
 }
 let startY=0;
 lockScreen.addEventListener("touchstart",e=>startY=e.touches[0].clientY);
@@ -26,6 +32,15 @@ function openApp(app){
 }
 function closeApp(){appScreen.classList.add("hidden");homeScreen.classList.remove("hidden");state.currentApp=null}
 function toastMsg(msg){toast.textContent=msg;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1800)}
+function showNotification(i){
+ const m=state.messages[i]; if(!m||!m.unread)return;
+ $("#notificationTitle").textContent=m.name;
+ $("#notificationBody").textContent=m.text;
+ notification.classList.remove("hidden");
+ clearTimeout(window.notificationTimer);
+ window.notificationTimer=setTimeout(()=>notification.classList.add("hidden"),6500);
+}
+notification.onclick=()=>{notification.classList.add("hidden");openApp("messages");};
 
 function renderApp(app){
  const data={
@@ -43,13 +58,19 @@ function renderApp(app){
 }
 
 function renderMessages(){
- appBody.innerHTML=state.messages.map((m,i)=>`<button class="list-row" data-chat="${i}" style="width:100%;text-align:left"><span class="avatar">✉</span><span class="row-main"><b>${m.name}</b><small>${m.text}</small></span><span class="time">${m.time}${m.unread?" •":""}</span></button>`).join("");
+ appBody.innerHTML=state.messages.map((m,i)=>`<button class="list-row" data-chat="${i}" style="width:100%;text-align:left"><span class="avatar">✉</span><span class="row-main"><b>${escapeHtml(m.name)}</b><small>${escapeHtml(m.text)}</small></span><span class="time">${escapeHtml(m.time)}${m.unread?" •":""}</span></button>`).join("");
  appBody.querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>renderChat(+b.dataset.chat));
 }
 function renderChat(i){
- const m=state.messages[i];m.unread=false;
- appBody.innerHTML=`<div class="app-card"><h3>${m.name}</h3><p>Conversa</p></div><div id="chat"><div class="message-bubble">${m.text}</div>${i===0?'<div class="message-bubble">Se você está lendo esta mensagem, ainda há tempo.</div>':''}</div><div class="chat-input"><input id="msgInput" placeholder="Mensagem"><button class="send" id="sendBtn">↑</button></div>`;
- $("#sendBtn").onclick=()=>{const v=$("#msgInput").value.trim();if(!v)return;$("#chat").insertAdjacentHTML("beforeend",`<div class="message-bubble me">${escapeHtml(v)}</div>`);$("#msgInput").value=""};
+ const m=state.messages[i];m.unread=false;saveMessages();
+ const history=m.history||[m.text];
+ appBody.innerHTML=`<div class="app-card"><h3>${escapeHtml(m.name)}</h3><p>Conversa</p></div><div id="chat">${history.map((msg,n)=>`<div class="message-bubble ${n%2===0?"":"me"}">${escapeHtml(msg)}</div>`).join("")}</div><div class="chat-input"><input id="msgInput" placeholder="Mensagem"><button class="send" id="sendBtn">↑</button></div>`;
+ $("#sendBtn").onclick=()=>{
+   const v=$("#msgInput").value.trim();if(!v)return;
+   m.history=m.history||[m.text];m.history.push(v);m.text=v;m.time="agora";saveMessages();
+   $("#chat").insertAdjacentHTML("beforeend",`<div class="message-bubble me">${escapeHtml(v)}</div>`);
+   $("#msgInput").value="";
+ };
 }
 function renderPhone(){appBody.innerHTML=`<div class="app-card"><h3>Chamadas recentes</h3><p>Nenhuma chamada registrada.</p></div><div class="empty">O telefone está em silêncio.</div>`}
 function renderGallery(){appBody.innerHTML=`<div class="app-card"><h3>Galeria</h3><p>3 itens • sincronização local</p></div><div class="app-card"><div style="height:180px;border-radius:12px;background:linear-gradient(145deg,#111,#282828);display:grid;place-items:center;font-size:48px">▧</div><p>IMG_0001.jpg</p></div><div class="app-card"><div style="height:120px;border-radius:12px;background:#111;display:grid;place-items:center;font-size:34px">?</div><p>arquivo_corrompido.png</p></div>`}
@@ -67,3 +88,4 @@ document.addEventListener("click",e=>{
 });
 $("#backButton").onclick=closeApp;$("#navHome").onclick=closeApp;$("#navBack").onclick=closeApp;
 $("#appMenu").onclick=()=>toastMsg("Menu indisponível neste aplicativo.");
+setTimeout(()=>{if(state.unlocked)showNotification(0)},12000);
