@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
     private var ttsReady = false
     private var listening = false
     private var voiceEnabled = false
+    private var speaking = false
     private val voiceHandler = Handler(Looper.getMainLooper())
 
     private val microphonePermission = registerForActivityResult(
@@ -577,6 +578,20 @@ class MainActivity : ComponentActivity() {
             if (ttsReady) {
                 tts.language = Locale("pt", "BR")
                 tts.setSpeechRate(1.05f)
+                tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        speaking = true
+                        voiceHandler.post { try { speechRecognizer?.cancel() } catch (_: Exception) {} }
+                    }
+                    override fun onDone(utteranceId: String?) {
+                        speaking = false
+                        if (voiceEnabled) restartNexaListening(250)
+                    }
+                    override fun onError(utteranceId: String?) {
+                        speaking = false
+                        if (voiceEnabled) restartNexaListening(250)
+                    }
+                })
             }
         }
 
@@ -629,12 +644,11 @@ class MainActivity : ComponentActivity() {
             return
         }
         voiceEnabled = true
-        startNexaListening()
         speak("Estou ouvindo.")
     }
 
     private fun startNexaListening() {
-        if (!voiceEnabled || !hasMicrophonePermission() || isFinishing || isDestroyed) return
+        if (!voiceEnabled || !hasMicrophonePermission() || isFinishing || isDestroyed || speaking) return
         if (listening) return
         try {
             speechRecognizer?.cancel()
@@ -673,7 +687,9 @@ class MainActivity : ComponentActivity() {
         val text = normalizeVoice(raw)
         if (!text.contains("nexa")) return
 
-        val command = text.substringAfter("nexa", "").trim().trim(',', '.', ':', ';')
+        val wakeWords = listOf("nexa", "nessa", "nexa")
+        val wake = wakeWords.firstOrNull { text.contains(it) } ?: return
+        val command = text.substringAfter(wake, "").trim().trim(',', '.', ':', ';')
         if (command.isBlank()) {
             speak("Estou ouvindo.")
             return
@@ -684,7 +700,7 @@ class MainActivity : ComponentActivity() {
                 applyScene("Estudo", true)
                 speak("Modo estudo ativado.")
             }
-            command.contains("modo gaming") || command.contains("modo jogo") || command == "gaming" || command.contains("ativar gaming") -> {
+            command.contains("modo gaming") || command.contains("modo game") || command.contains("modo jogo") || command == "gaming" || command == "game" || command.contains("ativar gaming") || command.contains("ativar game") -> {
                 applyScene("Gaming", true)
                 speak("Modo gaming ativado.")
             }
@@ -700,12 +716,12 @@ class MainActivity : ComponentActivity() {
                 applyScene("Normal", true)
                 speak("Modo normal ativado.")
             }
-            command.contains("abrir whatsapp") || command.contains("abrir whats") || command.contains("abrir zap") || command.contains("abrir wpp") -> {
+            command.contains("abrir whatsapp") || command.contains("abre whatsapp") || command.contains("abrir whats") || command.contains("abre whats") || command.contains("abrir zap") || command.contains("abre zap") || command.contains("abrir wpp") || command.contains("abre wpp") -> {
                 openVoiceApp("com.whatsapp", "WhatsApp")
             }
-            command.contains("abrir youtube") -> openVoiceApp("com.google.android.youtube", "YouTube")
-            command.contains("abrir chrome") || command.contains("abrir navegador") -> openVoiceApp("com.android.chrome", "Chrome")
-            command.contains("abrir configuracoes") || command.contains("abrir configuracao") -> {
+            command.contains("abrir youtube") || command.contains("abre youtube") -> openVoiceApp("com.google.android.youtube", "YouTube")
+            command.contains("abrir chrome") || command.contains("abre chrome") || command.contains("abrir navegador") || command.contains("abre navegador") -> openVoiceApp("com.android.chrome", "Chrome")
+            command.contains("abrir configuracoes") || command.contains("abre configuracoes") || command.contains("abrir configuracao") || command.contains("abre configuracao") -> {
                 try {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
                     speak("Abrindo as configurações.")
