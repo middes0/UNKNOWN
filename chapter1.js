@@ -298,7 +298,6 @@
 
     document.querySelector("#secretFile").onclick=function(){
       if(hasFlag("photoOpened")||hasFlag("choiceMade")){
-        setFlag("fileOpened",true);
         chapterTrigger("fileOpened");
         openProtectedFile();
       }else{
@@ -371,10 +370,7 @@
       return;
     }
 
-    if(!hasFlag("reportOpened")){
-      setFlag("reportOpened",true);
-      chapterTrigger("reportOpened");
-    }
+    if(!hasFlag("reportOpened"))chapterTrigger("reportOpened");
 
     appBody.innerHTML=
       '<div class="document-view">'+
