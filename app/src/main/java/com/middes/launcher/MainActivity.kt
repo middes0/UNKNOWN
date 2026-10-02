@@ -1079,6 +1079,8 @@ private lateinit var gameModeView: GameModeView
         }
         private val orbitArea = FrameLayout(context).apply {
             setWillNotDraw(false)
+            clipChildren = false
+            clipToPadding = false
             alpha = 0f
         }
         private var orbitAngle = 0.0
@@ -1163,7 +1165,8 @@ private lateinit var gameModeView: GameModeView
             val cy = orbitArea.height / 2f
             val count = orbitArea.childCount
             if (count == 0) return
-            val radius = minOf(orbitRadius, orbitArea.width * 0.40f, orbitArea.height * 0.40f).coerceAtLeast(dp(48).toFloat())
+            val maxRadius = minOf(orbitArea.width * 0.34f, orbitArea.height * 0.34f)
+            val radius = minOf(orbitRadius, maxRadius).coerceAtLeast(0f)
             for (i in 0 until count) {
                 val child = orbitArea.getChildAt(i)
                 val angle = orbitAngle + (Math.PI * 2.0 * i / count.toDouble())
@@ -1268,7 +1271,10 @@ private lateinit var gameModeView: GameModeView
                     item.animate().alpha(1f).setStartDelay((index * 100L).coerceAtMost(500L)).setDuration(320L).start()
                 } catch (_: Exception) {}
             }
-            orbitArea.post { positionOrbitApps() }
+            orbitArea.post {
+                positionOrbitApps()
+                orbitArea.invalidate()
+            }
         }
 
         private fun updateGameClock() {
@@ -1294,7 +1300,12 @@ private lateinit var gameModeView: GameModeView
             running = true
             updateGameClock()
             buildPerformanceRow()
-            setSceneApps(getSceneAppPackages("Gaming", emptyList()))
+            setSceneApps(getSceneAppPackages("Gaming", listOf(
+                "com.whatsapp",
+                "com.google.android.youtube",
+                "com.android.chrome",
+                "com.google.android.googlequicksearchbox"
+            )))
 
             if (!animate) {
                 booting = false
