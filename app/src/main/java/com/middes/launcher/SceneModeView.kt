@@ -357,6 +357,7 @@ class SceneModeView(
         var musicPlaying = false
         var nightWarm = false
         var nightClock = false
+        var studyStatus = "25:00"
         private var phase = 0f
         private var active = false
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
