@@ -404,6 +404,142 @@ private lateinit var gameModeView: GameModeView
         return frame
     }
 
+    private fun buildSceneTools() {
+        val tools = sceneTools ?: return
+        tools.removeAllViews()
+        tools.visibility = View.GONE
+        when (currentScene) {
+            "Estudo" -> buildStudyTools(tools)
+            "Música" -> buildMusicTools(tools)
+            "Noite" -> buildNightTools(tools)
+            else -> Unit
+        }
+    }
+
+    private fun sceneToolButton(label: String, accent: Int, action: () -> Unit): TextView =
+        textView(label, 9.5f, white, true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(
+                Color.argb(65, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                16f,
+                Color.argb(90, Color.red(accent), Color.green(accent), Color.blue(accent))
+            )
+            setOnClickListener { action() }
+        }
+
+    private fun buildStudyTools(parent: LinearLayout) {
+        parent.visibility = View.VISIBLE
+        parent.background = rounded(Color.argb(190, 14, 16, 25), 22f)
+        parent.setPadding(dp(14), dp(10), dp(14), dp(10))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        info.addView(textView("FOCO", 8.5f, Color.rgb(130, 150, 225), true), LinearLayout.LayoutParams(-1, dp(18)))
+        studyTimerText = textView("", 21f, white, true)
+        info.addView(studyTimerText, LinearLayout.LayoutParams(-1, dp(30)))
+        row.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+        val toggle = sceneToolButton(if (studyTimerRunning) "PAUSAR" else "INICIAR", Color.rgb(105, 125, 205)) {
+            if (studyTimerRunning) {
+                studyTimerRunning = false
+                sceneToolsHandler.removeCallbacks(studyTimerTicker)
+            } else {
+                if (studyRemainingSeconds <= 0) studyRemainingSeconds = 25 * 60
+                studyTimerRunning = true
+                sceneToolsHandler.removeCallbacks(studyTimerTicker)
+                sceneToolsHandler.postDelayed(studyTimerTicker, 1000L)
+            }
+            buildSceneTools()
+        }
+        row.addView(toggle, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
+        val reset = sceneToolButton("RESET", Color.rgb(105, 125, 205)) {
+            studyTimerRunning = false
+            sceneToolsHandler.removeCallbacks(studyTimerTicker)
+            studyRemainingSeconds = 25 * 60
+            updateStudyTimerUi()
+            buildSceneTools()
+        }
+        row.addView(reset, LinearLayout.LayoutParams(dp(62), dp(38)).apply { setMargins(dp(6), 0, 0, 0) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -1))
+        updateStudyTimerUi()
+    }
+
+    private fun updateStudyTimerUi() {
+        val minutes = studyRemainingSeconds / 60
+        val seconds = studyRemainingSeconds % 60
+        studyTimerText?.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
+
+    private fun findMusicPackage(): String? {
+        val selected = getSceneAppPackages("Música", emptyList())
+        val pm = packageManager
+        val candidates = selected + listOf(
+            "com.spotify.music",
+            "com.google.android.apps.youtube.music",
+            "com.amazon.mp3"
+        )
+        return candidates.distinct().firstOrNull { pkg ->
+            try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
+        }
+    }
+
+    private fun buildMusicTools(parent: LinearLayout) {
+        parent.visibility = View.VISIBLE
+        parent.background = rounded(Color.argb(195, 22, 13, 23), 22f)
+        parent.setPadding(dp(14), dp(9), dp(14), dp(9))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        titleBox.addView(textView("MÚSICA", 8.5f, Color.rgb(210, 105, 180), true), LinearLayout.LayoutParams(-1, dp(18)))
+        musicStatusText = textView(if (musicPlaying) "♫  TOCANDO" else "♫  PRONTA", 11.5f, white, true)
+        titleBox.addView(musicStatusText, LinearLayout.LayoutParams(-1, dp(27)))
+        row.addView(titleBox, LinearLayout.LayoutParams(0, -1, 1f))
+        val player = sceneToolButton(if (musicPlaying) "ABERTO" else "PLAYER", Color.rgb(190, 78, 155)) {
+            val pkg = findMusicPackage()
+            if (pkg != null) {
+                launchPackage(pkg)
+                musicPlaying = true
+                musicPulse = (musicPulse + 1) % 8
+                sceneToolsHandler.removeCallbacks(musicPulseTicker)
+                sceneToolsHandler.post(musicPulseTicker)
+                buildSceneTools()
+            } else {
+                openDrawer()
+                speak("Não encontrei um aplicativo de música configurado.")
+            }
+        }
+        row.addView(player, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
+        val stop = sceneToolButton("STOP", Color.rgb(190, 78, 155)) {
+            musicPlaying = false
+            sceneToolsHandler.removeCallbacks(musicPulseTicker)
+            updateMusicPulse()
+            buildSceneTools()
+        }
+        row.addView(stop, LinearLayout.LayoutParams(dp(62), dp(38)).apply { setMargins(dp(6), 0, 0, 0) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -1))
+        updateMusicPulse()
+    }
+
+    private fun updateMusicPulse() {
+        val bars = listOf("▁", "▂", "▄", "▆", "█", "▆", "▄", "▂")
+        val bar = bars[musicPulse.coerceIn(0, bars.lastIndex)]
+        musicStatusText?.text = (if (musicPlaying) "♫  TOCANDO " else "♫  PRONTA ") + bar
+    }
+
+    private fun buildNightTools(parent: LinearLayout) {
+        parent.visibility = View.VISIBLE
+        parent.background = rounded(Color.argb(205, 10, 9, 17), 22f)
+        parent.setPadding(dp(14), dp(10), dp(14), dp(10))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        info.addView(textView("NOITE", 8.5f, Color.rgb(125, 105, 185), true), LinearLayout.LayoutParams(-1, dp(18)))
+        info.addView(textView("Tela escura • brilho reduzido", 11.5f, white, true), LinearLayout.LayoutParams(-1, dp(24)))
+        info.addView(textView("NEXA restaura ao voltar para Normal.", 9f, gray), LinearLayout.LayoutParams(-1, dp(20)))
+        row.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+        row.addView(sceneToolButton("NORMAL", Color.rgb(92, 65, 145)) {
+            applyScene("Normal", true)
+            speak("Modo normal ativado.")
+        }, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -1))
+    }
+
     private fun buildSceneButtons() {
         sceneStrip.removeAllViews()
         listOf("Normal", "Gaming", "Estudo", "Música", "Noite").forEach { scene ->
