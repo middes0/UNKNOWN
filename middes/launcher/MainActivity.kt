@@ -254,7 +254,7 @@ private lateinit var gameModeView: GameModeView
             gravity = Gravity.CENTER
             letterSpacing = 0.04f
         }
-        timeBox.addView(dateText, LinearLayout.LayoutParams(-1, dp(28)))
+        timeBox.addView(dateText, LinearLayout.LayoutParams(-1, dp(28)))\n\n        // Texto interno usado pela NEXA; não é exibido na tela.\n        greetingText = textView("", 1f, Color.TRANSPARENT)
         content.addView(timeBox)
 
         val summary = LinearLayout(this).apply {
