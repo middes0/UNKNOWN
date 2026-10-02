@@ -315,7 +315,18 @@ private lateinit var gameModeView: GameModeView
         }
         summary.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, dp(32)))
 
-        content.addView(summary, LinearLayout.LayoutParams(-1, dp(120)).apply {
+        val sceneExtra = textView("NEXA  •  PRONTA  •  ACESSO RÁPIDO", 8.5f, muted, true).apply {
+            tag = "scene-extra"
+            letterSpacing = 0.08f
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Color.argb(42, 255, 255, 255), 11f)
+            setPadding(dp(10), 0, dp(10), 0)
+        }
+        summary.addView(sceneExtra, LinearLayout.LayoutParams(-1, dp(26)).apply {
+            setMargins(0, dp(7), 0, 0)
+        })
+
+        content.addView(summary, LinearLayout.LayoutParams(-1, dp(155)).apply {
             setMargins(0, dp(12), 0, dp(10))
         })
 
@@ -1560,6 +1571,8 @@ private lateinit var gameModeView: GameModeView
         val value = homeView.findViewWithTag<TextView>("scene-value")
         val quickTitle = homeView.findViewWithTag<TextView>("quick-title")
 
+        val extra = homeView.findViewWithTag<TextView>("scene-extra")
+
         val accentSoft = Color.argb(
             when (scene) {
                 "Noite" -> 45
@@ -1576,6 +1589,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Foco ativado."
                 subtitle?.text = "Um espaço calmo para estudar, organizar tarefas e manter a concentração."
                 value?.text = "FOCO"
+                extra?.text = "25 MIN  •  FOCO  •  PAUSA"
                 quickTitle?.text = "FERRAMENTAS DE ESTUDO"
                 homeView.setBackgroundColor(Color.argb(18, 78, 100, 175))
             }
@@ -1583,6 +1597,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Seu espaço sonoro."
                 subtitle?.text = "Acesso rápido aos seus players e aplicativos de música."
                 value?.text = "MÚSICA"
+                extra?.text = "♫  AGORA TOCANDO  •  ABRIR PLAYER"
                 quickTitle?.text = "SEU ÁUDIO"
                 homeView.setBackgroundColor(Color.argb(18, 150, 55, 125))
             }
@@ -1590,6 +1605,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Ambiente noturno."
                 subtitle?.text = "Interface reduzida para uma experiência mais discreta durante a noite."
                 value?.text = "NOITE"
+                extra?.text = "☾  MODO ESCURO  •  BRILHO 14%"
                 quickTitle?.text = "ACESSO NOTURNO"
                 homeView.setBackgroundColor(Color.argb(28, 45, 32, 78))
             }
@@ -1597,6 +1613,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Gaming ativo."
                 subtitle?.text = "Desempenho e seus aplicativos de jogo em um ambiente dedicado."
                 value?.text = "GAMING"
+                extra?.text = "⚡  DESEMPENHO ALTO  •  60 FPS"
                 quickTitle?.text = "SEUS JOGOS"
                 homeView.setBackgroundColor(Color.argb(22, 95, 35, 145))
             }
@@ -1604,6 +1621,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Tudo pronto para você."
                 subtitle?.text = "Acesso rápido aos seus aplicativos e ao assistente."
                 value?.text = "NORMAL"
+                extra?.text = "NEXA  •  PRONTA  •  ACESSO RÁPIDO"
                 quickTitle?.text = "ACESSO RÁPIDO"
                 homeView.setBackgroundColor(Color.TRANSPARENT)
             }
