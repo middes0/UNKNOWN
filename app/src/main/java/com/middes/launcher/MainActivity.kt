@@ -263,20 +263,9 @@ private lateinit var gameModeView: GameModeView
             background = rounded(panelStrong, 24f)
         }
 
-        val summaryTitle = textView("SEU RESUMO", 10f, muted, true).apply {
-            letterSpacing = 0.12f
+        val summaryTitle = textView("SEU RESUMO", 9f, muted, true).apply {
+            letterSpacing = 0.16f
         }
-        summary.addView(summaryTitle, LinearLayout.LayoutParams(-1, dp(20)))
-
-        greetingText = textView("", 1f, Color.TRANSPARENT).apply { visibility = View.GONE }
-        summary.addView(greetingText, LinearLayout.LayoutParams(-1, dp(28)))
-
-        val summaryLine = textView(
-            "Acesso rápido aos seus apps, cenas e espaço de musica.",
-            11f, gray
-        )
-        summary.addView(summaryLine, LinearLayout.LayoutParams(-1, dp(26)))
-
         summary.tag = "scene-summary"
 
         val sceneValue = textView("NORMAL", 9f, purpleBright, true).apply {
@@ -316,8 +305,8 @@ private lateinit var gameModeView: GameModeView
         })
 
 
-        val sceneLabel = textView("AMBIENTE", 9f, muted, true).apply {
-            letterSpacing = 0.16f
+        val sceneLabel = textView("AMBIENTE  •  CONTROLADO PELA NEXA", 8.5f, muted, true).apply {
+            letterSpacing = 0.10f
         }
         content.addView(sceneLabel, LinearLayout.LayoutParams(-1, dp(18)))
 
@@ -880,7 +869,7 @@ private lateinit var gameModeView: GameModeView
                 command.contains("ativa modo musica") ||
                 command.contains("ativar musica") ||
                 command.contains("ativa musica") ||
-                command == "Música" -> {
+                command == "musica" -> {
                 applyScene("Música", true)
                 speak("Modo música ativado.")
             }
