@@ -390,6 +390,23 @@ class MainActivity : ComponentActivity() {
                 openVoiceApp("com.google.android.youtube", "YouTube")
             matchesAny(command, "abrir chrome", "abrir navegador", "abre chrome", "abre navegador", "abra chrome", "abra navegador") ->
                 openVoiceApp("com.android.chrome", "Chrome")
+            matchesAny(command, "abrir telefone", "abrir telefone", "abrir discador", "abrir chamadas", "abrir ligacoes", "abrir ligação", "telefone", "discador") ->
+                openSystemApp(Intent(Intent.ACTION_DIAL), "o telefone")
+            matchesAny(command, "abrir camera", "abrir câmera", "abrir camera", "camera", "câmera") ->
+                openSystemApp(Intent(MediaStoreIntent.ACTION_IMAGE_CAPTURE), "a câmera")
+            matchesAny(command, "abrir galeria", "abrir fotos", "abrir imagens", "fotos", "galeria") ->
+                openSystemApp(Intent(Intent.ACTION_VIEW).apply { type = "image/*" }, "a galeria")
+            matchesAny(command, "abrir arquivos", "abrir gerenciador", "abrir documentos", "meus arquivos", "arquivos") ->
+                openSystemApp(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE) }, "os arquivos")
+            matchesAny(command, "abrir notificacoes", "abrir notificações", "notificacoes", "notificações") -> {
+                openAndroidSettingsPage(Settings.ACTION_NOTIFICATION_SETTINGS, "as configurações de notificações")
+            }
+            matchesAny(command, "abrir bluetooth", "bluetooth") -> {
+                openAndroidSettingsPage(Settings.ACTION_BLUETOOTH_SETTINGS, "as configurações de Bluetooth")
+            }
+            matchesAny(command, "abrir wifi", "wi fi", "wifi") -> {
+                openAndroidSettingsPage(Settings.ACTION_WIFI_SETTINGS, "as configurações de Wi-Fi")
+            }
             matchesAny(command, "abrir configuracoes", "abrir configuracao", "abre configuracoes", "abra configuracoes") -> {
                 openAndroidSettings()
                 nexa.speak("Abrindo as configurações.")
@@ -482,6 +499,62 @@ class MainActivity : ComponentActivity() {
         } else {
             nexa.speak("Não consegui abrir " + app.label + ".")
         }
+    }
+
+    private fun openSystemApp(intent: Intent, label: String) {
+        try {
+            if (intent.resolveActivity(packageManager) == null) {
+                nexa.speak("Não encontrei $label neste aparelho.")
+                return
+            }
+            nexa.speak("Abrindo $label.")
+            handler.postDelayed({
+                try {
+                    startActivity(intent)
+                } catch (_: Exception) {
+                    nexa.speak("Não consegui abrir $label.")
+                }
+            }, 220L)
+        } catch (_: Exception) {
+            nexa.speak("Não consegui abrir $label.")
+        }
+    }
+
+    private fun openAndroidSettingsPage(action: String, label: String) {
+        try {
+            startActivity(Intent(action))
+            nexa.speak("Abrindo $label.")
+        } catch (_: Exception) {
+            nexa.speak("Não consegui abrir $label.")
+        }
+    }
+
+    private fun performHomeSceneAction() {
+        when (store.scene) {
+            "Estudo" -> {
+                if (studyRunning) {
+                    studyRunning = false
+                    handler.removeCallbacks(studyTicker)
+                } else {
+                    startStudy()
+                }
+                refreshHome()
+            }
+            "Música" -> openMusicPlayer()
+        }
+    }
+
+    private fun startStudy() {
+        if (studyRemainingSeconds <= 0) studyRemainingSeconds = 25 * 60
+        studyRunning = true
+        handler.removeCallbacks(studyTicker)
+        handler.post(studyTicker)
+    }
+
+    private fun formatStudyTime(): String {
+        val minutes = studyRemainingSeconds / 60
+        val seconds = studyRemainingSeconds % 60
+        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 
     private fun matchesAny(command: String, vararg values: String): Boolean =
@@ -807,6 +880,10 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             openAndroidSettings()
         }
+    }
+
+    private object MediaStoreIntent {
+        const val ACTION_IMAGE_CAPTURE = "android.media.action.IMAGE_CAPTURE"
     }
 
     private enum class Screen { HOME, DRAWER, SETTINGS, NEXA, SCENE, FLOW, GAME }
