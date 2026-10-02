@@ -140,7 +140,11 @@ class MainActivity : ComponentActivity() {
         when (screen) {
             Screen.HOME -> Unit
             Screen.DRAWER, Screen.SETTINGS, Screen.FLOW, Screen.NEXA -> showHome()
-            Screen.SCENE, Screen.GAME -> applyScene("Normal", true)
+            Screen.SCENE -> {
+                if (::sceneView.isInitialized) sceneView.performExitAnimation()
+                else applyScene("Normal", true)
+            }
+            Screen.GAME -> applyScene("Normal", true)
         }
     }
 
@@ -194,6 +198,7 @@ class MainActivity : ComponentActivity() {
             onOpenSettings = { showSettings() },
             onOpenFlow = { showFlow() },
             onOpenNexa = { showNexa() },
+            onQuickAction = { quickSystemAction(it) },
             onLaunchApp = { launchPackage(it) },
             appLabel = { repo.label(it) },
             appIcon = { repo.icon(it) },
@@ -249,6 +254,24 @@ class MainActivity : ComponentActivity() {
                     } else startStudy()
                     "Música" -> openMusicPlayer()
                     "Noite" -> applyScene("Normal", true)
+                }
+            },
+            onSecondary = {
+                when (store.scene) {
+                    "Estudo" -> {
+                        studyRunning = false
+                        handler.removeCallbacks(studyTicker)
+                        studyRemainingSeconds = 25 * 60
+                        refreshSceneView()
+                    }
+                    "Música" -> sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, "play/pause")
+                    "Noite" -> setNightBrightness(0.08f)
+                }
+            },
+            onTertiary = {
+                when (store.scene) {
+                    "Música" -> sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT, "próxima faixa")
+                    "Noite" -> if (::sceneView.isInitialized) sceneView.showNightClock()
                 }
             },
             onLaunch = { launchPackage(it) },
@@ -612,6 +635,26 @@ class MainActivity : ComponentActivity() {
             Log.e("NEXA", "Falha no controle de mídia: $keyCode", error)
             if (!silent) nexa.speak("Não consegui controlar a reprodução de mídia.")
             throw error
+        }
+    }
+
+    private fun quickSystemAction(action: String) {
+        when (action) {
+            "wifi" -> openAndroidSettingsPage(Settings.ACTION_WIFI_SETTINGS, "o Wi-Fi")
+            "bluetooth" -> openAndroidSettingsPage(Settings.ACTION_BLUETOOTH_SETTINGS, "o Bluetooth")
+            "sound" -> openAndroidSettingsPage(Settings.ACTION_SOUND_SETTINGS, "as configurações de som")
+            "display" -> openAndroidSettingsPage(Settings.ACTION_DISPLAY_SETTINGS, "as configurações de tela")
+        }
+    }
+
+    private fun setNightBrightness(value: Float) {
+        try {
+            val params = window.attributes
+            params.screenBrightness = value.coerceIn(0.05f, 1f)
+            window.attributes = params
+            nexa.speak("Brilho noturno reduzido.")
+        } catch (error: Exception) {
+            Log.e("MIDDES", "Falha no brilho noturno", error)
         }
     }
 
