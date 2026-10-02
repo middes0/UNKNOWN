@@ -75,7 +75,7 @@ class DrawerView(
 
         addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
-            addView(favoriteRow, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 74f)))
+            addView(favoriteRow, FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 74f)))
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 8f))
         })
@@ -86,14 +86,14 @@ class DrawerView(
 
         addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
-            addView(recentRow, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 74f)))
+            addView(recentRow, FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 74f)))
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 10f))
         })
 
         val scroll = ScrollView(context).apply {
             overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-            addView(appsRoot, ScrollView.LayoutParams(-1, -2))
+            addView(appsRoot, FrameLayout.LayoutParams(-1, -2))
         }
         addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
