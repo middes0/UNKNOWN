@@ -65,6 +65,38 @@ private lateinit var gameModeView: GameModeView
 
     private var currentScene = "Normal"
 
+    private var normalBrightness = -1
+    private var sceneBrightnessApplied = false
+    private var sceneTools: LinearLayout? = null
+    private var studyTimerText: TextView? = null
+    private var studyTimerRunning = false
+    private var studyRemainingSeconds = 25 * 60
+    private var musicStatusText: TextView? = null
+    private var musicPlaying = false
+    private var musicPulse = 0
+    private val sceneToolsHandler = Handler(Looper.getMainLooper())
+    private val studyTimerTicker = object : Runnable {
+        override fun run() {
+            if (!studyTimerRunning) return
+            studyRemainingSeconds--
+            if (studyRemainingSeconds <= 0) {
+                studyRemainingSeconds = 0
+                studyTimerRunning = false
+                speak("Tempo de foco concluído.")
+            }
+            updateStudyTimerUi()
+            if (studyTimerRunning) sceneToolsHandler.postDelayed(this, 1000L)
+        }
+    }
+    private val musicPulseTicker = object : Runnable {
+        override fun run() {
+            if (!musicPlaying) return
+            musicPulse = (musicPulse + 1) % 8
+            updateMusicPulse()
+            sceneToolsHandler.postDelayed(this, 120L)
+        }
+    }
+
     private var speechRecognizer: SpeechRecognizer? = null
     private lateinit var speechIntent: Intent
     private lateinit var tts: TextToSpeech
@@ -130,6 +162,10 @@ private lateinit var gameModeView: GameModeView
 
     override fun onDestroy() {
         stopNexaListening()
+        studyTimerRunning = false
+        musicPlaying = false
+        sceneToolsHandler.removeCallbacks(studyTimerTicker)
+        sceneToolsHandler.removeCallbacks(musicPulseTicker)
         if (::tts.isInitialized) {
             tts.stop()
             tts.shutdown()
@@ -348,6 +384,15 @@ private lateinit var gameModeView: GameModeView
         })
         buildQuickApps()
 
+        sceneTools = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
+        content.addView(sceneTools, LinearLayout.LayoutParams(-1, dp(96)).apply {
+            setMargins(0, 0, 0, dp(8))
+        })
+        buildSceneTools()
+
         val spacer = Space(this)
         content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
 
@@ -361,6 +406,142 @@ private lateinit var gameModeView: GameModeView
         buildDock()
 
         return frame
+    }
+
+    private fun buildSceneTools() {
+        val tools = sceneTools ?: return
+        tools.removeAllViews()
+        tools.visibility = View.GONE
+        when (currentScene) {
+            "Estudo" -> buildStudyTools(tools)
+            "Música" -> buildMusicTools(tools)
+            "Noite" -> buildNightTools(tools)
+            else -> Unit
+        }
+    }
+
+    private fun sceneToolButton(label: String, accent: Int, action: () -> Unit): TextView =
+        textView(label, 9.5f, white, true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(
+                Color.argb(65, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                16f,
+                Color.argb(90, Color.red(accent), Color.green(accent), Color.blue(accent))
+            )
+            setOnClickListener { action() }
+        }
+
+    private fun buildStudyTools(parent: LinearLayout) {
+        parent.visibility = View.VISIBLE
+        parent.background = rounded(Color.argb(190, 14, 16, 25), 22f)
+        parent.setPadding(dp(14), dp(10), dp(14), dp(10))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        info.addView(textView("FOCO", 8.5f, Color.rgb(130, 150, 225), true), LinearLayout.LayoutParams(-1, dp(18)))
+        studyTimerText = textView("", 21f, white, true)
+        info.addView(studyTimerText, LinearLayout.LayoutParams(-1, dp(30)))
+        row.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+        val toggle = sceneToolButton(if (studyTimerRunning) "PAUSAR" else "INICIAR", Color.rgb(105, 125, 205)) {
+            if (studyTimerRunning) {
+                studyTimerRunning = false
+                sceneToolsHandler.removeCallbacks(studyTimerTicker)
+            } else {
+                if (studyRemainingSeconds <= 0) studyRemainingSeconds = 25 * 60
+                studyTimerRunning = true
+                sceneToolsHandler.removeCallbacks(studyTimerTicker)
+                sceneToolsHandler.postDelayed(studyTimerTicker, 1000L)
+            }
+            buildSceneTools()
+        }
+        row.addView(toggle, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
+        val reset = sceneToolButton("RESET", Color.rgb(105, 125, 205)) {
+            studyTimerRunning = false
+            sceneToolsHandler.removeCallbacks(studyTimerTicker)
+            studyRemainingSeconds = 25 * 60
+            updateStudyTimerUi()
+            buildSceneTools()
+        }
+        row.addView(reset, LinearLayout.LayoutParams(dp(62), dp(38)).apply { setMargins(dp(6), 0, 0, 0) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -1))
+        updateStudyTimerUi()
+    }
+
+    private fun updateStudyTimerUi() {
+        val minutes = studyRemainingSeconds / 60
+        val seconds = studyRemainingSeconds % 60
+        studyTimerText?.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
+
+    private fun findMusicPackage(): String? {
+        val selected = getSceneAppPackages("Música", emptyList())
+        val pm = packageManager
+        val candidates = selected + listOf(
+            "com.spotify.music",
+            "com.google.android.apps.youtube.music",
+            "com.amazon.mp3"
+        )
+        return candidates.distinct().firstOrNull { pkg ->
+            try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
+        }
+    }
+
+    private fun buildMusicTools(parent: LinearLayout) {
+        parent.visibility = View.VISIBLE
+        parent.background = rounded(Color.argb(195, 22, 13, 23), 22f)
+        parent.setPadding(dp(14), dp(9), dp(14), dp(9))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        titleBox.addView(textView("MÚSICA", 8.5f, Color.rgb(210, 105, 180), true), LinearLayout.LayoutParams(-1, dp(18)))
+        musicStatusText = textView(if (musicPlaying) "♫  TOCANDO" else "♫  PRONTA", 11.5f, white, true)
+        titleBox.addView(musicStatusText, LinearLayout.LayoutParams(-1, dp(27)))
+        row.addView(titleBox, LinearLayout.LayoutParams(0, -1, 1f))
+        val player = sceneToolButton(if (musicPlaying) "ABERTO" else "PLAYER", Color.rgb(190, 78, 155)) {
+            val pkg = findMusicPackage()
+            if (pkg != null) {
+                launchPackage(pkg)
+                musicPlaying = true
+                musicPulse = (musicPulse + 1) % 8
+                sceneToolsHandler.removeCallbacks(musicPulseTicker)
+                sceneToolsHandler.post(musicPulseTicker)
+                buildSceneTools()
+            } else {
+                openDrawer()
+                speak("Não encontrei um aplicativo de música configurado.")
+            }
+        }
+        row.addView(player, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
+        val stop = sceneToolButton("STOP", Color.rgb(190, 78, 155)) {
+            musicPlaying = false
+            sceneToolsHandler.removeCallbacks(musicPulseTicker)
+            updateMusicPulse()
+            buildSceneTools()
+        }
+        row.addView(stop, LinearLayout.LayoutParams(dp(62), dp(38)).apply { setMargins(dp(6), 0, 0, 0) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -1))
+        updateMusicPulse()
+    }
+
+    private fun updateMusicPulse() {
+        val bars = listOf("▁", "▂", "▄", "▆", "█", "▆", "▄", "▂")
+        val bar = bars[musicPulse.coerceIn(0, bars.lastIndex)]
+        musicStatusText?.text = (if (musicPlaying) "♫  TOCANDO " else "♫  PRONTA ") + bar
+    }
+
+    private fun buildNightTools(parent: LinearLayout) {
+        parent.visibility = View.VISIBLE
+        parent.background = rounded(Color.argb(205, 10, 9, 17), 22f)
+        parent.setPadding(dp(14), dp(10), dp(14), dp(10))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        info.addView(textView("NOITE", 8.5f, Color.rgb(125, 105, 185), true), LinearLayout.LayoutParams(-1, dp(18)))
+        info.addView(textView("Tela escura • brilho reduzido", 11.5f, white, true), LinearLayout.LayoutParams(-1, dp(24)))
+        info.addView(textView("NEXA restaura ao voltar para Normal.", 9f, gray), LinearLayout.LayoutParams(-1, dp(20)))
+        row.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+        row.addView(sceneToolButton("NORMAL", Color.rgb(92, 65, 145)) {
+            applyScene("Normal", true)
+            speak("Modo normal ativado.")
+        }, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
+        parent.addView(row, LinearLayout.LayoutParams(-1, -1))
     }
 
     private fun buildSceneButtons() {
@@ -486,7 +667,6 @@ private lateinit var gameModeView: GameModeView
             .setNegativeButton("Cancelar", null)
             .show()
     }
-
 
     private fun buildDock() {
         dock.removeAllViews()
@@ -743,7 +923,10 @@ private lateinit var gameModeView: GameModeView
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 900L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 650L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
         }
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -764,7 +947,10 @@ private lateinit var gameModeView: GameModeView
                 override fun onResults(results: Bundle?) {
                     listening = false
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
-                    val phrase = matches.firstOrNull().orEmpty()
+                    val phrase = matches.firstOrNull { candidate ->
+                        val normalized = normalizeVoice(candidate)
+                        normalized.contains("nexa") || normalized.contains("nessa")
+                    } ?: matches.firstOrNull().orEmpty()
 
                     if (speaking && bargeInListening) {
                         val normalized = normalizeVoice(phrase)
@@ -863,6 +1049,7 @@ private lateinit var gameModeView: GameModeView
         }
 
         command = command
+            .replace(Regex("\\b(?:o|a)\\s+modo\\b"), "modo")
             .replace(Regex("^quero que voce[ ,]+"), "")
             .replace(Regex("^quero que vc[ ,]+"), "")
             .replace(Regex("^quero[ ,]+"), "")
@@ -973,8 +1160,17 @@ private lateinit var gameModeView: GameModeView
                 val appCommand = command
                     .removePrefix("abrir ").removePrefix("abra ").removePrefix("abre ")
                     .removePrefix("iniciar ").removePrefix("inicia ").removePrefix("inicie ")
-                    .removePrefix("aplicativo ").removePrefix("app ").trim()
+                    .removePrefix("aplicativo ").removePrefix("app ")
+                    .replace(Regex("^(o|a|os|as)\\s+"), "")
+                    .trim()
                 openInstalledAppByName(appCommand)
+            }
+
+            command.startsWith("fechar ") || command.startsWith("fecha ") ||
+                command.contains("fechar aplicativos") || command.contains("fechar gaveta") -> {
+                closeDrawer()
+                closeDesk()
+                closeSettings()
             }
 
             else -> {
@@ -1512,6 +1708,13 @@ private lateinit var gameModeView: GameModeView
         }
         updateHomeSceneStyle(scene, sceneColor)
         if (::sidebar.isInitialized) buildQuickApps()
+        buildSceneTools()
+        updateStudyTimerUi()
+
+        if (scene != "Música") {
+            musicPlaying = false
+            sceneToolsHandler.removeCallbacks(musicPulseTicker)
+        }
 
         applySystemSceneMode(scene)
 
