@@ -46,6 +46,7 @@ class SceneModeView(
     private var currentScene = "Normal"
     private var nightWarm = false
     private var nightClock = false
+    private var studyStatus = "25:00"
 
     init {
         setWillNotDraw(false)
@@ -161,6 +162,7 @@ class SceneModeView(
         currentScene = value
         protocolArt.scene = value
         protocolArt.studyRunning = running
+        protocolArt.studyStatus = status
         protocolArt.nightWarm = nightWarm
         protocolArt.nightClock = nightClock
         protocolArt.invalidate()
@@ -260,7 +262,14 @@ class SceneModeView(
         }
 
         rebuildApps(value)
+    }
+
+    fun performEnterAnimation(value: String) {
         animateScene(value)
+    }
+
+    fun performExitAnimation() {
+        exitAnimated()
     }
 
     private fun rebuildApps(value: String) {
@@ -493,8 +502,10 @@ class SceneModeView(
 
         private fun parseTime(): Float {
             return try {
-                // SceneModeView feeds a 25-minute countdown; this art uses the current display when possible.
-                25f * 60f
+                val pieces = studyStatus.split(":")
+                val minutes = pieces.getOrNull(0)?.toIntOrNull() ?: 25
+                val seconds = pieces.getOrNull(1)?.toIntOrNull() ?: 0
+                (minutes * 60 + seconds).toFloat()
             } catch (_: Exception) {
                 25f * 60f
             }
