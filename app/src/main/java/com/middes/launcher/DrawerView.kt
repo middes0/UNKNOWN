@@ -29,7 +29,7 @@ class DrawerView(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
     }
-    private val appsRoot = LinearLayout(context).apply { orientation = VERTICAL }
+    private val appsRoot = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private var allApps = emptyList<InstalledApp>()
 
     init {
@@ -46,7 +46,7 @@ class DrawerView(
             gravity = Gravity.CENTER
             contentDescription = "Voltar"
             setOnClickListener { onClose() }
-        }, LayoutParams(MiddesUi.dp(context, 46f), MiddesUi.dp(context, 50f)))
+        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 46f), MiddesUi.dp(context, 50f)))
 
         val title = LinearLayout(context).apply { orientation = VERTICAL }
         title.addView(MiddesUi.text(context, "Aplicativos", 24f, MiddesColors.white, true),
