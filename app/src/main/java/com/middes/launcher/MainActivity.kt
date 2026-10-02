@@ -165,6 +165,7 @@ class MainActivity : ComponentActivity() {
             onOpenNexa = { toggleNexa() },
             onScenePicker = { showScenePicker() },
             onSceneAction = { performHomeSceneAction() },
+            onLaunchApp = { launchPackage(it) },
             appLabel = { repo.label(it) },
             appIcon = { repo.icon(it) },
             favoritePackages = { homeFavorites() },
