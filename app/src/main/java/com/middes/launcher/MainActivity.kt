@@ -297,6 +297,11 @@ private lateinit var gameModeView: GameModeView
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             letterSpacing = 0.01f
+            isLongClickable = true
+            setOnLongClickListener {
+                showDiscreteScenePicker()
+                true
+            }
         }
         timeBox.addView(clock, LinearLayout.LayoutParams(-1, dp(80)))
 
@@ -542,6 +547,18 @@ private lateinit var gameModeView: GameModeView
             speak("Modo normal ativado.")
         }, LinearLayout.LayoutParams(dp(78), dp(38)).apply { setMargins(dp(8), 0, 0, 0) })
         parent.addView(row, LinearLayout.LayoutParams(-1, -1))
+    }
+
+    private fun showDiscreteScenePicker() {
+        val scenes = arrayOf("Normal", "Gaming", "Estudo", "Música", "Noite")
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Cena")
+            .setItems(scenes) { _, which ->
+                applyScene(scenes[which], true)
+            }
+            .setNegativeButton("Cancelar", null)
+            .create()
+        dialog.show()
     }
 
     private fun buildSceneButtons() {
