@@ -162,6 +162,10 @@ private lateinit var gameModeView: GameModeView
 
     override fun onDestroy() {
         stopNexaListening()
+        studyTimerRunning = false
+        musicPlaying = false
+        sceneToolsHandler.removeCallbacks(studyTimerTicker)
+        sceneToolsHandler.removeCallbacks(musicPulseTicker)
         if (::tts.isInitialized) {
             tts.stop()
             tts.shutdown()
@@ -1697,6 +1701,13 @@ private lateinit var gameModeView: GameModeView
         }
         updateHomeSceneStyle(scene, sceneColor)
         if (::sidebar.isInitialized) buildQuickApps()
+        buildSceneTools()
+        updateStudyTimerUi()
+
+        if (scene != "Música") {
+            musicPlaying = false
+            sceneToolsHandler.removeCallbacks(musicPulseTicker)
+        }
 
         applySystemSceneMode(scene)
 
