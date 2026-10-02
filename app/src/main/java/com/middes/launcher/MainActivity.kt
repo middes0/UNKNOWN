@@ -919,7 +919,10 @@ private lateinit var gameModeView: GameModeView
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 900L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 650L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
         }
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -940,7 +943,10 @@ private lateinit var gameModeView: GameModeView
                 override fun onResults(results: Bundle?) {
                     listening = false
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
-                    val phrase = matches.firstOrNull().orEmpty()
+                    val phrase = matches.firstOrNull { candidate ->
+                        val normalized = normalizeVoice(candidate)
+                        normalized.contains("nexa") || normalized.contains("nessa")
+                    } ?: matches.firstOrNull().orEmpty()
 
                     if (speaking && bargeInListening) {
                         val normalized = normalizeVoice(phrase)
