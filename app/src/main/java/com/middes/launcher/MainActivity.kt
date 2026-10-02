@@ -459,9 +459,9 @@ class MainActivity : ComponentActivity() {
         }
         SceneManager.applySystem(this, window, scene)
         if (scene == "Gaming") {
-            gameView.start(buildGameApps(), true)
             screen = Screen.GAME
             setScreenVisibility(screen)
+            gameView.start(buildGameApps(), true)
         } else {
             gameView.stop()
             screen = Screen.HOME
