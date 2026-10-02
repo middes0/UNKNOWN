@@ -17,16 +17,15 @@ object SceneManager {
     }
 
     fun applySystem(context: Context, window: Window, scene: String) {
+        // Os protocolos do MIDDES não alteram o modo global do Android.
+        // Isso evita que o Android recrie a Activity durante comandos da NEXA.
         try {
-            val uiMode = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-            when (scene) {
-                "Noite" -> uiMode.setNightMode(UiModeManager.MODE_NIGHT_YES)
-                "Normal" -> uiMode.setNightMode(UiModeManager.MODE_NIGHT_NO)
-            }
-        } catch (_: Exception) {}
-
-        window.attributes = window.attributes.apply {
-            screenBrightness = if (scene == "Noite") 0.18f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            val params = window.attributes
+            params.screenBrightness =
+                if (scene == "Noite") 0.18f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            window.attributes = params
+        } catch (_: Exception) {
+            // O protocolo continua funcionando mesmo se o sistema bloquear o brilho.
         }
     }
 
