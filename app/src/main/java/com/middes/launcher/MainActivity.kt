@@ -325,13 +325,26 @@ class MainActivity : ComponentActivity() {
     private fun splitNexaChain(command: String): List<String> {
         val normalized = command
             .replace(Regex("\\s+e depois\\s+"), " e ")
+            .replace(Regex("\\s+depois\\s+"), " e ")
             .replace(Regex("\\s*,\\s*"), " e ")
+            .replace(Regex("\\s+tambem\\s+"), " e ")
+            .replace(Regex("\\s+também\\s+"), " e ")
+            .replace(Regex("\\s+entao\\s+"), " e ")
+            .replace(Regex("\\s+então\\s+"), " e ")
         return normalized
             .split(Regex("\\s+e\\s+"))
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .take(3)
     }
+
+    private fun normalizeNexaAction(command: String): String =
+        command
+            .trim()
+            .replace(Regex("^\\s*(por favor|tambem|também)\\s+"), "")
+            .replace(Regex("\\b(o|a|os|as|um|uma|uns|umas)\\b"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
 
     private fun executeNexaChain(actions: List<String>) {
         val results = mutableListOf<String>()
@@ -357,7 +370,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleNexaSingleCommand(command: String, silent: Boolean = false) {
+    private fun handleNexaSingleCommand(command: String, silent: Boolean = false) {\n        val command = normalizeNexaAction(command)
         when {
             isSceneChangeRequest(command) -> {
                 val target = sceneFromCommand(command)
