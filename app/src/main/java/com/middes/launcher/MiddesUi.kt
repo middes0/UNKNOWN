@@ -8,17 +8,17 @@ import android.widget.ImageView
 import android.widget.TextView
 
 object MiddesColors {
-    val white = Color.WHITE
-    val background = Color.rgb(5, 5, 8)
-    val surface = Color.rgb(14, 12, 20)
-    val surfaceRaised = Color.rgb(20, 17, 28)
-    val text = Color.rgb(226, 223, 233)
-    val muted = Color.rgb(143, 138, 156)
-    val purpleBright = Color.rgb(190, 132, 250)
-    val study = Color.rgb(117, 141, 225)
-    val music = Color.rgb(214, 103, 181)
-    val night = Color.rgb(117, 89, 175)
-    val gaming = Color.rgb(176, 91, 235)
+    val white = Color.rgb(239, 243, 255)
+    val background = Color.rgb(3, 4, 8)
+    val surface = Color.rgb(9, 10, 16)
+    val surfaceRaised = Color.rgb(15, 16, 25)
+    val text = Color.rgb(221, 228, 242)
+    val muted = Color.rgb(122, 133, 153)
+    val purpleBright = Color.rgb(185, 132, 255)
+    val study = Color.rgb(105, 176, 255)
+    val music = Color.rgb(224, 105, 205)
+    val night = Color.rgb(132, 104, 202)
+    val gaming = Color.rgb(194, 88, 255)
 }
 
 object MiddesUi {
@@ -38,14 +38,15 @@ object MiddesUi {
             textSize = size
             setTextColor(color)
             gravity = Gravity.CENTER_VERTICAL
+            includeFontPadding = true
             if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
 
     fun iconButton(context: Context, glyph: String, description: String, action: () -> Unit): TextView =
-        text(context, glyph, 22f, MiddesColors.text, true).apply {
+        text(context, glyph, 21f, MiddesColors.text, true).apply {
             gravity = Gravity.CENTER
             contentDescription = description
-            background = rounded(context, Color.argb(60, 255, 255, 255), 18f)
+            background = rounded(context, Color.argb(40, 255, 255, 255), 17f, Color.argb(30, 255, 255, 255))
             setOnClickListener { action() }
         }
 
