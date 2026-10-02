@@ -109,3 +109,4 @@ class SettingsView(
             setMargins(0, 0, 0, MiddesUi.dp(context, 8f))
         })
     }
+}
