@@ -21,7 +21,6 @@ class SettingsView(
     private val nexaEnabled: () -> Boolean,
     private val onAndroidSettings: () -> Unit,
     private val onMicrophoneSettings: () -> Unit,
-    private val onSceneSelected: (String) -> Unit
 ) : ScrollView(context) {
 
     private val list = LinearLayout(context).apply {
@@ -59,9 +58,8 @@ class SettingsView(
         row("Middes Flow", "Disponível", "Espaço dinâmico por contexto", onOpenFlow)
         row("Aplicativos", "Drawer", "Pesquisa, recentes, favoritos e gerenciamento", onOpenDrawer)
 
-        section("Cenas")
-        row("Cena atual", store.scene, "Normal, Estudo, Música, Noite e Gaming", ::sceneDialog)
-        row("Apps das cenas", "Configurar", "Escolher aplicativos por ambiente", onSceneApps)
+        section("Protocolos")
+        row("Ambientes da NEXA", "Ocultos", "Estudo, Música, Noite e Gaming são ativados por voz", onSceneApps)
 
         section("NEXA")
         row("NEXA", if (nexaEnabled()) "Ativada" else "Desativada", "Wake word e comandos do launcher", onToggleNexa)
@@ -77,7 +75,7 @@ class SettingsView(
 
         section("Sistema")
         row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e sistema", onAndroidSettings)
-        row("Versão", "2.0", "Launcher Android nativo")
+        row("Versão", "2.1", "SCI-FI HUD / NEXA CORE")
         row("Gaming", "Dados reais", "Sem FPS ou desempenho inventados")
     }
 
@@ -111,16 +109,3 @@ class SettingsView(
             setMargins(0, 0, 0, MiddesUi.dp(context, 8f))
         })
     }
-
-    private fun sceneDialog() {
-        val labels = scenes.toTypedArray()
-        android.app.AlertDialog.Builder(context)
-            .setTitle("Escolher cena")
-            .setSingleChoiceItems(labels, labels.indexOf(store.scene).coerceAtLeast(0)) { dialog, which ->
-                dialog.dismiss()
-                onSceneSelected(labels[which])
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-}
