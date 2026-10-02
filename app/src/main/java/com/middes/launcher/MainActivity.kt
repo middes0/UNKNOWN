@@ -296,6 +296,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNexaCommand(raw: String) {
+        val actions = command
+            .replace(Regex("\\s*,\\s*"), " e ")
+            .replace(Regex("\\s+e depois\\s+"), " e ")
+            .split(Regex("\\s+e\\s+"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        if (actions.size > 1) {
+            actions.take(3).forEach { action ->
+                handleNexaCommand("nexa $action")
+            }
+            if (actions.size > 3) {
+                nexa.speak("Executei as três primeiras ações para manter o comando seguro.")
+            }
+            return
+        }
+
+        handleNexaSingleCommand(command)
+    }
+
+    private fun handleNexaSingleCommand(command: String) {
         val normalized = normalizeVoice(raw)
         val wake = listOf("nexa", "nessa").firstOrNull { normalized.contains(it) } ?: return
         var command = normalized.substringAfter(wake).trim().trim(',', '.', ':', ';')
