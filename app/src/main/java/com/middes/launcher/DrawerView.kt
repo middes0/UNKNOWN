@@ -33,7 +33,7 @@ class DrawerView(
     private var allApps = emptyList<InstalledApp>()
 
     init {
-        orientation = VERTICAL
+        orientation = LinearLayout.VERTICAL
         setPadding(MiddesUi.dp(context, 18f), MiddesUi.dp(context, 20f), MiddesUi.dp(context, 18f), MiddesUi.dp(context, 14f))
         setBackgroundColor(Color.rgb(7, 6, 10))
         build()
@@ -48,14 +48,14 @@ class DrawerView(
             setOnClickListener { onClose() }
         }, LinearLayout.LayoutParams(MiddesUi.dp(context, 46f), MiddesUi.dp(context, 50f)))
 
-        val title = LinearLayout(context).apply { orientation = VERTICAL }
+        val title = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         title.addView(MiddesUi.text(context, "Aplicativos", 24f, MiddesColors.white, true),
-            LayoutParams(-1, MiddesUi.dp(context, 30f)))
+            LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 30f)))
         title.addView(MiddesUi.text(context, "Pesquisa e acesso rápido", 10.5f, MiddesColors.muted),
-            LayoutParams(-1, MiddesUi.dp(context, 20f)))
-        top.addView(title, LayoutParams(0, MiddesUi.dp(context, 50f), 1f))
+            LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 20f)))
+        top.addView(title, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 50f), 1f))
         top.addView(MiddesUi.iconButton(context, "⚙", "Configurações") { onOpenSettings() },
-            LayoutParams(MiddesUi.dp(context, 42f), MiddesUi.dp(context, 34f)))
+            LinearLayout.LayoutParams(MiddesUi.dp(context, 42f), MiddesUi.dp(context, 34f)))
         addView(top)
 
         search.hint = "Pesquisar aplicativo"
@@ -65,29 +65,29 @@ class DrawerView(
         search.setSingleLine(true)
         search.setPadding(MiddesUi.dp(context, 18f), 0, MiddesUi.dp(context, 18f), 0)
         search.background = MiddesUi.rounded(context, MiddesColors.surfaceRaised, 20f)
-        addView(search, LayoutParams(-1, MiddesUi.dp(context, 52f)).apply {
+        addView(search, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 52f)).apply {
             setMargins(0, MiddesUi.dp(context, 12f), 0, MiddesUi.dp(context, 10f))
         })
 
         addView(MiddesUi.text(context, "FAVORITOS", 8.5f, MiddesColors.muted, true).apply {
             letterSpacing = 0.13f
-        }, LayoutParams(-1, MiddesUi.dp(context, 18f)))
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 18f)))
 
         addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             addView(favoriteRow, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 74f)))
-        }, LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 8f))
         })
 
         addView(MiddesUi.text(context, "RECENTES", 8.5f, MiddesColors.muted, true).apply {
             letterSpacing = 0.13f
-        }, LayoutParams(-1, MiddesUi.dp(context, 18f)))
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 18f)))
 
         addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             addView(recentRow, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 74f)))
-        }, LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 10f))
         })
 
@@ -95,7 +95,7 @@ class DrawerView(
             overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
             addView(appsRoot, ScrollView.LayoutParams(-1, -2))
         }
-        addView(scroll, LayoutParams(-1, 0, 1f))
+        addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -131,12 +131,12 @@ class DrawerView(
 
         if (favorites.isEmpty()) {
             favoriteRow.addView(MiddesUi.text(context, "Segure um app para adicioná-lo.", 10f, MiddesColors.muted),
-                LayoutParams(MiddesUi.dp(context, 240f), MiddesUi.dp(context, 74f)))
+                LinearLayout.LayoutParams(MiddesUi.dp(context, 240f), MiddesUi.dp(context, 74f)))
             return
         }
 
         favorites.forEach { app ->
-            favoriteRow.addView(miniApp(app), LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
+            favoriteRow.addView(miniApp(app), LinearLayout.LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
                 setMargins(0, 0, MiddesUi.dp(context, 8f), 0)
             })
         }
@@ -151,12 +151,12 @@ class DrawerView(
 
         if (recent.isEmpty()) {
             recentRow.addView(MiddesUi.text(context, "Os apps usados aparecem aqui.", 10f, MiddesColors.muted),
-                LayoutParams(MiddesUi.dp(context, 250f), MiddesUi.dp(context, 74f)))
+                LinearLayout.LayoutParams(MiddesUi.dp(context, 250f), MiddesUi.dp(context, 74f)))
             return
         }
 
         recent.forEach { app ->
-            recentRow.addView(miniApp(app), LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
+            recentRow.addView(miniApp(app), LinearLayout.LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
                 setMargins(0, 0, MiddesUi.dp(context, 8f), 0)
             })
         }
@@ -164,7 +164,7 @@ class DrawerView(
 
     private fun miniApp(app: InstalledApp): LinearLayout =
         LinearLayout(context).apply {
-            orientation = VERTICAL
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setOnClickListener { onLaunch(app.packageName) }
             setOnLongClickListener {
@@ -172,12 +172,12 @@ class DrawerView(
                 true
             }
             val icon = try { app.resolveInfo.loadIcon(context.packageManager) } catch (_: Exception) { null }
-            if (icon != null) addView(MiddesUi.appIcon(context, icon, 42), LayoutParams(-1, MiddesUi.dp(context, 46f)))
+            if (icon != null) addView(MiddesUi.appIcon(context, icon, 42), LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 46f)))
             addView(MiddesUi.text(context, app.label, 8.5f, MiddesColors.muted).apply {
                 gravity = Gravity.CENTER
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-            }, LayoutParams(-1, MiddesUi.dp(context, 24f)))
+            }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 24f)))
         }
 
     private fun renderApps(query: String) {
@@ -205,7 +205,7 @@ class DrawerView(
                     orientation = HORIZONTAL
                     gravity = Gravity.TOP
                 }
-                appsRoot.addView(row, LayoutParams(-1, MiddesUi.dp(context, 108f)))
+                appsRoot.addView(row, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 108f)))
             }
             row?.addView(appItem(app), LinearLayout.LayoutParams(0, MiddesUi.dp(context, 104f), 1f))
         }
@@ -213,7 +213,7 @@ class DrawerView(
 
     private fun appItem(app: InstalledApp): View {
         val item = LinearLayout(context).apply {
-            orientation = VERTICAL
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             setPadding(MiddesUi.dp(context, 3f), MiddesUi.dp(context, 4f), MiddesUi.dp(context, 3f), MiddesUi.dp(context, 4f))
             setOnClickListener { onLaunch(app.packageName) }
@@ -228,12 +228,12 @@ class DrawerView(
         val iconWrap = android.widget.FrameLayout(context)
         if (icon != null) iconWrap.addView(MiddesUi.appIcon(context, icon, 56),
             android.widget.FrameLayout.LayoutParams(-1, MiddesUi.dp(context, 62f), Gravity.CENTER))
-        item.addView(iconWrap, LayoutParams(-1, MiddesUi.dp(context, 68f)))
+        item.addView(iconWrap, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 68f)))
         item.addView(MiddesUi.text(context, app.label, 10f, MiddesColors.text).apply {
             gravity = Gravity.CENTER
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-        }, LayoutParams(-1, MiddesUi.dp(context, 28f)))
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 28f)))
         return item
     }
 }
