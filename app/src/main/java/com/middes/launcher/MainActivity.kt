@@ -483,7 +483,6 @@ class MainActivity : ComponentActivity() {
         if (::gameView.isInitialized) gameView.stop()
         if (::flowView.isInitialized) flowView.stop()
         setScreenVisibility(screen)
-        SceneManager.applySystem(this, window, "Normal")
         refreshHome()
     }
 
@@ -537,8 +536,8 @@ class MainActivity : ComponentActivity() {
                 handler.removeCallbacks(studyTicker)
             }
 
-            SceneManager.applySystem(this, window, scene)
-
+            // Os modos internos são visuais. Não alteramos o modo global do Android
+            // durante um comando de voz, evitando recriação da Activity.
             when (scene) {
                 "Gaming" -> {
                     screen = Screen.GAME
