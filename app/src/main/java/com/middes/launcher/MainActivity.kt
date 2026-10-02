@@ -29,6 +29,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var settingsView: SettingsView
     private lateinit var flowView: MiddesFlowView
     private lateinit var gameView: GameModeView
+    private lateinit var nexaView: NexaView
+    private lateinit var sceneView: SceneModeView
+    private lateinit var hudView: MiddesHudView
     private lateinit var store: LauncherStore
     private lateinit var repo: AppRepository
     private lateinit var nexa: NexaController
@@ -41,8 +44,13 @@ class MainActivity : ComponentActivity() {
 
     private val clockTicker = object : Runnable {
         override fun run() {
-            if (screen == Screen.HOME) refreshHome()
-            handler.postDelayed(this, 30_000L)
+            when (screen) {
+                Screen.HOME -> refreshHome()
+                Screen.NEXA -> if (::nexaView.isInitialized) nexaView.refresh()
+                Screen.SCENE -> if (::sceneView.isInitialized) refreshSceneView()
+                else -> Unit
+            }
+            handler.postDelayed(this, 1_000L)
         }
     }
 
@@ -54,7 +62,11 @@ class MainActivity : ComponentActivity() {
                 studyRunning = false
                 nexa.speak("Tempo de foco concluído.")
             }
-            if (screen == Screen.HOME) refreshHome()
+            when (screen) {
+                Screen.HOME -> refreshHome()
+                Screen.SCENE -> refreshSceneView()
+                else -> Unit
+            }
             if (studyRunning) handler.postDelayed(this, 1_000L)
         }
     }
@@ -123,8 +135,8 @@ class MainActivity : ComponentActivity() {
     override fun onBackPressed() {
         when (screen) {
             Screen.HOME -> Unit
-            Screen.DRAWER, Screen.SETTINGS, Screen.FLOW -> showHome()
-            Screen.GAME -> applyScene("Normal", true)
+            Screen.DRAWER, Screen.SETTINGS, Screen.FLOW, Screen.NEXA -> showHome()
+            Screen.SCENE, Screen.GAME -> applyScene("Normal", true)
         }
     }
 
@@ -134,11 +146,17 @@ class MainActivity : ComponentActivity() {
             enabledProvider = { store.nexaEnabled },
             setEnabled = { store.nexaEnabled = it },
             onNeedPermission = { microphonePermission.launch(Manifest.permission.RECORD_AUDIO) },
-            onCommand = { raw -> runOnUiThread { handleNexaCommand(raw) } },
+            onCommand = { raw ->
+                runOnUiThread {
+                    if (::nexaView.isInitialized) nexaView.addCommand(raw)
+                    handleNexaCommand(raw)
+                }
+            },
             onStateChanged = { state ->
                 runOnUiThread {
                     nexaState = state
                     if (::homeView.isInitialized) refreshHome()
+                    if (::nexaView.isInitialized) nexaView.refresh()
                 }
             }
         )
@@ -156,23 +174,21 @@ class MainActivity : ComponentActivity() {
         dimView = View(this)
         root.addView(dimView, FrameLayout.LayoutParams(-1, -1))
 
+        hudView = MiddesHudView(this)
+        root.addView(hudView, FrameLayout.LayoutParams(-1, -1))
+
         homeView = HomeView(
             this,
             onOpenDrawer = { showDrawer(false) },
             onOpenDrawerSearch = { showDrawer(true) },
             onOpenSettings = { showSettings() },
             onOpenFlow = { showFlow() },
-            onOpenNexa = { toggleNexa() },
-            onScenePicker = { showScenePicker() },
-            onSceneAction = { performHomeSceneAction() },
+            onOpenNexa = { showNexa() },
             onLaunchApp = { launchPackage(it) },
             appLabel = { repo.label(it) },
             appIcon = { repo.icon(it) },
             favoritePackages = { homeFavorites() },
-            scenePackages = { sceneDefaults(it) },
-            nexaState = { nexaState },
-            studyStatus = { formatStudyTime() },
-            studyRunning = { studyRunning }
+            nexaState = { nexaState }
         )
         root.addView(homeView, FrameLayout.LayoutParams(-1, -1))
 
@@ -195,10 +211,42 @@ class MainActivity : ComponentActivity() {
             onToggleNexa = { toggleNexa() },
             nexaEnabled = { store.nexaEnabled },
             onAndroidSettings = { openAndroidSettings() },
-            onMicrophoneSettings = { openMicrophoneSettings() },
-            onSceneSelected = { applyScene(it, true) }
+            onMicrophoneSettings = { openMicrophoneSettings() }
         )
         root.addView(settingsView, FrameLayout.LayoutParams(-1, -1))
+
+        nexaView = NexaView(
+            this,
+            onClose = { showHome() },
+            onToggle = { toggleNexa() },
+            onApps = { showDrawer(false) },
+            onFlow = { showFlow() },
+            enabled = { store.nexaEnabled },
+            state = { nexaState }
+        )
+        root.addView(nexaView, FrameLayout.LayoutParams(-1, -1))
+
+        sceneView = SceneModeView(
+            this,
+            onExit = { applyScene("Normal", true) },
+            onNexa = { showNexa() },
+            onPrimary = {
+                when (store.scene) {
+                    "Estudo" -> if (studyRunning) {
+                        studyRunning = false
+                        handler.removeCallbacks(studyTicker)
+                        refreshSceneView()
+                    } else startStudy()
+                    "Música" -> openMusicPlayer()
+                    "Noite" -> applyScene("Normal", true)
+                }
+            },
+            onLaunch = { launchPackage(it) },
+            label = { repo.label(it) },
+            icon = { repo.icon(it) },
+            packages = { sceneDefaults(it) }
+        )
+        root.addView(sceneView, FrameLayout.LayoutParams(-1, -1))
 
         flowView = MiddesFlowView(
             this,
@@ -216,19 +264,29 @@ class MainActivity : ComponentActivity() {
         )
         root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
 
-        listOf<View>(drawerView, settingsView, flowView, gameView).forEach {
+        listOf<View>(drawerView, settingsView, nexaView, sceneView, flowView, gameView).forEach {
             it.visibility = View.GONE
         }
 
         setContentView(root)
         applyWallpaper()
+        hudView.setAccent(MiddesColors.purpleBright)
         refreshHome()
     }
 
     private fun toggleNexa() {
         nexa.toggle()
         refreshHome()
+        if (::nexaView.isInitialized) nexaView.refresh()
         if (screen == Screen.SETTINGS) settingsView.rebuild()
+    }
+
+    private fun showNexa() {
+        if (::gameView.isInitialized) gameView.stop()
+        if (::flowView.isInitialized) flowView.stop()
+        screen = Screen.NEXA
+        setScreenVisibility(screen)
+        nexaView.refresh()
     }
 
     private fun handleNexaCommand(raw: String) {
@@ -294,9 +352,13 @@ class MainActivity : ComponentActivity() {
                 showFlow()
                 nexa.speak("Flow ativado.")
             }
+            matchesAny(command, "abrir nexa", "mostrar nexa", "abrir assistente", "abrir nucleo", "mostrar nucleo") -> {
+                showNexa()
+                nexa.speak("Núcleo NEXA aberto.")
+            }
             matchesAny(command, "abrir cenas", "abrir cena", "mostrar cenas", "escolher cena") -> {
-                showScenePicker()
-                nexa.speak("Aqui estão as cenas.")
+                applyScene("Normal", true)
+                nexa.speak("Use comandos como modo estudo, modo música, modo noite ou modo gaming.")
             }
             matchesAny(command, "abrir whatsapp", "abrir whats", "abrir zap", "abrir wpp", "abre whatsapp", "abre zap", "abra whatsapp", "abra zap") ->
                 openVoiceApp("com.whatsapp", "WhatsApp")
@@ -372,9 +434,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openVoiceApp(packageName: String, label: String) {
-        if (repo.launch(packageName)) {
-            store.recordLaunch(packageName)
-            handler.postDelayed({ nexa.speak("Abrindo $label.") }, 100L)
+        if (repo.icon(packageName) != null) {
+            nexa.speak("Abrindo $label.")
+            handler.postDelayed({
+                if (repo.launch(packageName)) store.recordLaunch(packageName)
+            }, 280L)
         } else {
             nexa.speak("O $label não está instalado.")
         }
@@ -386,9 +450,11 @@ class MainActivity : ComponentActivity() {
             nexa.speak("Não encontrei esse aplicativo.")
             return
         }
-        if (repo.launch(app.packageName)) {
-            store.recordLaunch(app.packageName)
-            handler.postDelayed({ nexa.speak("Abrindo " + app.label + ".") }, 100L)
+        if (repo.icon(app.packageName) != null) {
+            nexa.speak("Abrindo " + app.label + ".")
+            handler.postDelayed({
+                if (repo.launch(app.packageName)) store.recordLaunch(app.packageName)
+            }, 280L)
         } else {
             nexa.speak("Não consegui abrir " + app.label + ".")
         }
@@ -404,11 +470,14 @@ class MainActivity : ComponentActivity() {
             .trim()
 
     private fun showHome() {
+        store.scene = "Normal"
+        studyRunning = false
+        handler.removeCallbacks(studyTicker)
         screen = Screen.HOME
         if (::gameView.isInitialized) gameView.stop()
         if (::flowView.isInitialized) flowView.stop()
         setScreenVisibility(screen)
-        SceneManager.applySystem(this, window, if (store.scene == "Gaming") "Normal" else store.scene)
+        SceneManager.applySystem(this, window, "Normal")
         refreshHome()
     }
 
@@ -445,6 +514,8 @@ class MainActivity : ComponentActivity() {
         homeView.visibility = if (active == Screen.HOME) View.VISIBLE else View.GONE
         drawerView.visibility = if (active == Screen.DRAWER) View.VISIBLE else View.GONE
         settingsView.visibility = if (active == Screen.SETTINGS) View.VISIBLE else View.GONE
+        nexaView.visibility = if (active == Screen.NEXA) View.VISIBLE else View.GONE
+        sceneView.visibility = if (active == Screen.SCENE) View.VISIBLE else View.GONE
         flowView.visibility = if (active == Screen.FLOW) View.VISIBLE else View.GONE
         gameView.visibility = if (active == Screen.GAME) View.VISIBLE else View.GONE
         if (active != Screen.FLOW) flowView.stop()
@@ -459,15 +530,28 @@ class MainActivity : ComponentActivity() {
             handler.removeCallbacks(studyTicker)
         }
         SceneManager.applySystem(this, window, scene)
-        if (scene == "Gaming") {
-            screen = Screen.GAME
-            setScreenVisibility(screen)
-            gameView.start(buildGameApps(), true)
-        } else {
-            gameView.stop()
-            screen = Screen.HOME
-            setScreenVisibility(Screen.HOME)
-            refreshHome()
+        when (scene) {
+            "Gaming" -> {
+                screen = Screen.GAME
+                setScreenVisibility(screen)
+                gameView.start(buildGameApps(), true)
+            }
+            "Normal" -> {
+                screen = Screen.HOME
+                setScreenVisibility(screen)
+                refreshHome()
+            }
+            else -> {
+                screen = Screen.SCENE
+                setScreenVisibility(screen)
+                sceneView.setScene(scene, formatStudyTime(), studyRunning)
+            }
+        }
+    }
+
+    private fun refreshSceneView() {
+        if (::sceneView.isInitialized && screen == Screen.SCENE) {
+            sceneView.setScene(store.scene, formatStudyTime(), studyRunning)
         }
     }
 
@@ -596,7 +680,7 @@ class MainActivity : ComponentActivity() {
         if (!::homeView.isInitialized) return
         val battery = (getSystemService(Context.BATTERY_SERVICE) as BatteryManager)
             .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        homeView.refresh(store.scene, battery)
+        homeView.refresh(battery)
     }
 
     private fun homeFavorites(): List<String> {
@@ -665,5 +749,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private enum class Screen { HOME, DRAWER, SETTINGS, FLOW, GAME }
+    private enum class Screen { HOME, DRAWER, SETTINGS, NEXA, SCENE, FLOW, GAME }
 }
