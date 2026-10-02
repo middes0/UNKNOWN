@@ -20,7 +20,8 @@ class SettingsView(
     private val onToggleNexa: () -> Unit,
     private val nexaEnabled: () -> Boolean,
     private val onAndroidSettings: () -> Unit,
-    private val onMicrophoneSettings: () -> Unit
+    private val onMicrophoneSettings: () -> Unit,
+    private val onSceneSelected: (String) -> Unit
 ) : ScrollView(context) {
 
     private val list = LinearLayout(context).apply {
@@ -75,7 +76,7 @@ class SettingsView(
         row("Deslizar para baixo", "Busca", "Na tela inicial")
 
         section("Sistema")
-        row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e permissões", onAndroidSettings)
+        row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e sistema", onAndroidSettings)
         row("Versão", "2.0", "Launcher Android nativo")
         row("Gaming", "Dados reais", "Sem FPS ou desempenho inventados")
     }
@@ -116,9 +117,8 @@ class SettingsView(
         android.app.AlertDialog.Builder(context)
             .setTitle("Escolher cena")
             .setSingleChoiceItems(labels, labels.indexOf(store.scene).coerceAtLeast(0)) { dialog, which ->
-                store.scene = labels[which]
                 dialog.dismiss()
-                onBack()
+                onSceneSelected(labels[which])
             }
             .setNegativeButton("Cancelar", null)
             .show()
