@@ -1505,6 +1505,49 @@ private lateinit var gameModeView: GameModeView
             showGameMode(save)
         } else {
             hideGameMode()
+            applySystemSceneMode(scene)
+            animateSceneEntry(scene)
+        }
+    }
+
+    private fun applySystemSceneMode(scene: String) {
+        try {
+            val uiMode = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+            if (scene == "Noite") uiMode.setNightMode(UiModeManager.MODE_NIGHT_YES)
+            else if (scene == "Normal") uiMode.setNightMode(UiModeManager.MODE_NIGHT_NO)
+        } catch (_: Exception) {}
+
+        if (scene == "Noite") {
+            try {
+                if (Settings.System.canWrite(this)) {
+                    if (normalBrightness < 0) normalBrightness = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 180)
+                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 35)
+                    sceneBrightnessApplied = true
+                } else {
+                    window.attributes = window.attributes.apply { screenBrightness = 0.18f }
+                }
+            } catch (_: Exception) {}
+        } else if (sceneBrightnessApplied) {
+            try {
+                if (Settings.System.canWrite(this) && normalBrightness >= 0) Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, normalBrightness.coerceIn(1, 255))
+            } catch (_: Exception) {}
+            sceneBrightnessApplied = false
+            window.attributes = window.attributes.apply { screenBrightness = -1f }
+        }
+    }
+
+    private fun animateSceneEntry(scene: String) {
+        if (!::homeView.isInitialized) return
+        val summary = homeView.findViewWithTag<View>("scene-summary") ?: return
+        val extra = homeView.findViewWithTag<View>("scene-extra")
+        val views = listOf<View?>(summary, extra, sidebar, dock).filterNotNull()
+        views.forEach { it.alpha = 0f }
+        views.forEachIndexed { index, view ->
+            if (scene == "Música") view.translationX = if (index % 2 == 0) -dp(18).toFloat() else dp(18).toFloat()
+            else view.translationY = dp(18).toFloat()
+            val animation = view.animate().alpha(1f).setStartDelay(index * 80L).setDuration(420L)
+            if (scene == "Música") animation.translationX(0f) else animation.translationY(0f)
+            animation.start()
         }
     }
 
