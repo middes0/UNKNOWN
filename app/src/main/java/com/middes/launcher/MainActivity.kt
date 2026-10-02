@@ -149,7 +149,13 @@ class MainActivity : ComponentActivity() {
             onCommand = { raw ->
                 runOnUiThread {
                     if (::nexaView.isInitialized) nexaView.addCommand(raw)
-                    handleNexaCommand(raw)
+                    try {
+                        handleNexaCommand(raw)
+                    } catch (error: Exception) {
+                        error.printStackTrace()
+                        showHome()
+                        nexa.speak("O comando encontrou um erro. Voltei para a tela inicial.")
+                    }
                 }
             },
             onStateChanged = { state ->
@@ -524,28 +530,55 @@ class MainActivity : ComponentActivity() {
 
     private fun applyScene(scene: String, save: Boolean) {
         if (scene !in SceneManager.scenes) return
-        if (save) store.scene = scene
-        if (scene != "Estudo") {
+        try {
+            if (save) store.scene = scene
+            if (scene != "Estudo") {
+                studyRunning = false
+                handler.removeCallbacks(studyTicker)
+            }
+
+            SceneManager.applySystem(this, window, scene)
+
+            when (scene) {
+                "Gaming" -> {
+                    screen = Screen.GAME
+                    setScreenVisibility(screen)
+                    gameView.post {
+                        try {
+                            gameView.start(buildGameApps(), true)
+                        } catch (error: Exception) {
+                            error.printStackTrace()
+                            applyScene("Normal", true)
+                        }
+                    }
+                }
+                "Normal" -> {
+                    screen = Screen.HOME
+                    setScreenVisibility(screen)
+                    refreshHome()
+                }
+                else -> {
+                    screen = Screen.SCENE
+                    setScreenVisibility(screen)
+                    sceneView.post {
+                        try {
+                            sceneView.setScene(scene, formatStudyTime(), studyRunning)
+                        } catch (error: Exception) {
+                            error.printStackTrace()
+                            applyScene("Normal", true)
+                        }
+                    }
+                }
+            }
+        } catch (error: Exception) {
+            error.printStackTrace()
+            store.scene = "Normal"
             studyRunning = false
             handler.removeCallbacks(studyTicker)
-        }
-        SceneManager.applySystem(this, window, scene)
-        when (scene) {
-            "Gaming" -> {
-                screen = Screen.GAME
-                setScreenVisibility(screen)
-                gameView.start(buildGameApps(), true)
-            }
-            "Normal" -> {
-                screen = Screen.HOME
-                setScreenVisibility(screen)
-                refreshHome()
-            }
-            else -> {
-                screen = Screen.SCENE
-                setScreenVisibility(screen)
-                sceneView.setScene(scene, formatStudyTime(), studyRunning)
-            }
+            SceneManager.applySystem(this, window, "Normal")
+            screen = Screen.HOME
+            setScreenVisibility(screen)
+            refreshHome()
         }
     }
 
