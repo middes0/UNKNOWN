@@ -212,75 +212,98 @@ private lateinit var gameModeView: GameModeView
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(28), dp(18), dp(14))
+            setPadding(dp(18), dp(26), dp(18), dp(14))
         }
         frame.addView(content, FrameLayout.LayoutParams(-1, -1))
 
+        // Cabeçalho limpo, inspirado em launchers Android premium.
         val top = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        val logo = textView("MIDDES", 13f, white, true).apply {
-            letterSpacing = 0.22f
+        val logoBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        top.addView(logo, LinearLayout.LayoutParams(0, dp(34), 1f))
+        logoBox.addView(textView("MIDDES", 13f, white, true).apply {
+            letterSpacing = 0.20f
+        }, LinearLayout.LayoutParams(-1, dp(22)))
+        logoBox.addView(textView("NEXA • ATIVA", 8f, muted, true).apply {
+            letterSpacing = 0.08f
+        }, LinearLayout.LayoutParams(-1, dp(16)))
+        top.addView(logoBox, LinearLayout.LayoutParams(0, dp(42), 1f))
 
-        batteryText = textView("100%", 11f, gray).apply {
+        batteryText = textView("100%", 11f, gray, true).apply {
             gravity = Gravity.CENTER
+            background = rounded(Color.argb(100, 255, 255, 255), 16f)
         }
-        top.addView(batteryText, LinearLayout.LayoutParams(dp(52), dp(34)))
+        top.addView(batteryText, LinearLayout.LayoutParams(dp(58), dp(34)).apply {
+            setMargins(0, 0, dp(6), 0)
+        })
 
-        val settings = textView("⚙", 23f, white).apply {
+        val settings = textView("⚙", 21f, white).apply {
             gravity = Gravity.CENTER
+            background = rounded(Color.argb(90, 255, 255, 255), 16f)
             setOnClickListener { openSettings() }
         }
         top.addView(settings, LinearLayout.LayoutParams(dp(42), dp(34)))
         content.addView(top)
 
+        // Relógio principal.
         val timeBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(20), 0, 0)
+            setPadding(0, dp(18), 0, 0)
         }
 
         clock = textView("", 68f, white).apply {
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            letterSpacing = 0.02f
+            letterSpacing = 0.01f
         }
-        timeBox.addView(clock, LinearLayout.LayoutParams(-1, dp(82)))
+        timeBox.addView(clock, LinearLayout.LayoutParams(-1, dp(80)))
 
-        dateText = textView("", 12f, gray).apply {
+        dateText = textView("", 11.5f, gray).apply {
             gravity = Gravity.CENTER
             letterSpacing = 0.04f
         }
-        timeBox.addView(dateText, LinearLayout.LayoutParams(-1, dp(28)))
+        timeBox.addView(dateText, LinearLayout.LayoutParams(-1, dp(24)))
 
         // Texto interno usado pela NEXA; não é exibido na tela.
         greetingText = textView("", 1f, Color.TRANSPARENT)
         content.addView(timeBox)
 
+        // Cartão principal da cena atual.
         val summary = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(14), dp(18), dp(14))
+            setPadding(dp(18), dp(15), dp(18), dp(15))
             background = rounded(panelStrong, 24f)
         }
 
-        val summaryTitle = textView("SEU RESUMO", 9f, muted, true).apply {
-            letterSpacing = 0.16f
+        val summaryTop = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
         }
-        summary.tag = "scene-summary"
+        val summaryTitle = textView("SEU RESUMO", 8.5f, muted, true).apply {
+            letterSpacing = 0.14f
+        }
+        summaryTitle.tag = "summary-title"
+        summaryTop.addView(summaryTitle, LinearLayout.LayoutParams(0, dp(18), 1f))
 
-        val sceneValue = textView("NORMAL", 9f, purpleBright, true).apply {
+        val sceneValue = textView("NORMAL", 8.5f, purpleBright, true).apply {
             tag = "scene-value"
-            letterSpacing = 0.16f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.13f
+            background = rounded(Color.argb(70, 125, 78, 190), 12f)
         }
-        summary.addView(sceneValue, LinearLayout.LayoutParams(-1, dp(18)))
+        summaryTop.addView(sceneValue, LinearLayout.LayoutParams(dp(82), dp(24)))
+        summary.addView(summaryTop)
 
-        val sceneTitle = textView("Tudo pronto para você.", 17f, white, true).apply {
+        val sceneTitle = textView("Tudo pronto para você.", 18f, white, true).apply {
             tag = "scene-title"
         }
-        summary.addView(sceneTitle, LinearLayout.LayoutParams(-1, dp(28)))
+        summary.addView(sceneTitle, LinearLayout.LayoutParams(-1, dp(30)).apply {
+            setMargins(0, dp(3), 0, 0)
+        })
 
         val sceneSubtitle = textView(
             "Acesso rápido aos seus aplicativos e ao assistente.",
@@ -289,40 +312,18 @@ private lateinit var gameModeView: GameModeView
             tag = "scene-subtitle"
             maxLines = 2
         }
-        summary.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, dp(34)))
+        summary.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, dp(32)))
 
-        content.addView(summary, LinearLayout.LayoutParams(-1, dp(112)).apply {
-            setMargins(0, dp(12), 0, dp(12))
-        })
-        val sceneHint = textView(
-            when (currentScene) {
-                "Estudo" -> "25 MIN  •  CONCENTRAÇÃO"
-                "Música" -> "♫  REPRODUÇÃO  •  SEU AMBIENTE MUSICAL"
-                "Noite" -> "OLED  •  LUZ REDUZIDA"
-                else -> "MIDDES  •  ASSISTENTE NEXA"
-            },
-            9f, muted, true
-        ).apply { letterSpacing = 0.08f }
-        content.addView(sceneHint, LinearLayout.LayoutParams(-1, dp(18)).apply {
-            setMargins(dp(2), 0, dp(2), dp(10))
+        content.addView(summary, LinearLayout.LayoutParams(-1, dp(120)).apply {
+            setMargins(0, dp(12), 0, dp(10))
         })
 
-
-        val sceneLabel = textView("AMBIENTE  •  CONTROLADO PELA NEXA", 8.5f, muted, true).apply {
-            letterSpacing = 0.10f
+        val section = textView("ACESSO RÁPIDO", 8.5f, muted, true).apply {
+            letterSpacing = 0.14f
         }
-        content.addView(sceneLabel, LinearLayout.LayoutParams(-1, dp(18)))
-
-        sceneStrip = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            alpha = 0f
-            visibility = View.GONE
-        }
-        content.addView(sceneStrip, LinearLayout.LayoutParams(1, 1))
-
-        val spacer = Space(this)
-        content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
+        content.addView(section, LinearLayout.LayoutParams(-1, dp(18)).apply {
+            setMargins(dp(2), 0, 0, dp(7))
+        })
 
         sidebar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -333,13 +334,18 @@ private lateinit var gameModeView: GameModeView
         })
         buildQuickApps()
 
+        val spacer = Space(this)
+        content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
+
+        // Dock inferior compacto, com NEXA como ação principal.
         dock = LinearLayout(this).apply {
             gravity = Gravity.CENTER
-            background = rounded(Color.argb(215, 10, 9, 15), 26f)
+            background = rounded(Color.argb(225, 10, 9, 15), 24f)
             setPadding(dp(6), dp(5), dp(6), dp(5))
         }
-        content.addView(dock, LinearLayout.LayoutParams(-1, dp(64)))
+        content.addView(dock, LinearLayout.LayoutParams(-1, dp(62)))
         buildDock()
+
         return frame
     }
 
