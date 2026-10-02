@@ -27,6 +27,7 @@ class MiddesCoreView(
     }
     private var phase = 0f
     private var attached = false
+    private var introAnimator: ValueAnimator? = null
     private val pulse = object : Runnable {
         override fun run() {
             if (!attached) return
@@ -50,7 +51,38 @@ class MiddesCoreView(
     override fun onDetachedFromWindow() {
         attached = false
         removeCallbacks(pulse)
+        introAnimator?.cancel()
         super.onDetachedFromWindow()
+    }
+
+    fun startIntro() {
+        introAnimator?.cancel()
+        alpha = 0f
+        scaleX = 0.82f
+        scaleY = 0.82f
+        introAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 380L
+            interpolator = LinearInterpolator()
+            addUpdateListener { a ->
+                val v = a.animatedValue as Float
+                alpha = v
+                scaleX = 0.82f + 0.18f * v
+                scaleY = scaleX
+            }
+            start()
+        }
+    }
+
+    fun stopIntro() {
+        introAnimator?.cancel()
+        introAnimator = null
+        alpha = 1f
+        scaleX = 1f
+        scaleY = 1f
+    }
+
+    fun refreshAnimation() {
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
