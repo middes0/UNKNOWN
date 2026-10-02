@@ -21,6 +21,8 @@ class SettingsView(
     private val nexaEnabled: () -> Boolean,
     private val onAndroidSettings: () -> Unit,
     private val onMicrophoneSettings: () -> Unit,
+    private val dndStatus: () -> String,
+    private val onOpenDndSettings: () -> Unit,
 ) : ScrollView(context) {
 
     private val list = LinearLayout(context).apply {
@@ -60,6 +62,7 @@ class SettingsView(
 
         section("Protocolos")
         row("Ambientes da NEXA", "Ocultos", "Estudo, Música, Noite e Gaming são ativados por voz", onSceneApps)
+        row("Proteção contra notificações", dndStatus(), "Permite que os protocolos silenciem alertas e chamadas e restaurem o estado anterior", onOpenDndSettings)
 
         section("NEXA")
         row("NEXA", if (nexaEnabled()) "Ativada" else "Desativada", "Wake word e comandos do launcher", onToggleNexa)
