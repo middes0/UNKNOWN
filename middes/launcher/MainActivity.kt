@@ -826,88 +826,100 @@ private lateinit var gameModeView: GameModeView
 
     private fun handleNexaCommand(raw: String) {
         val text = normalizeVoice(raw)
-        if (!text.contains("nexa")) return
+        if (text.isBlank()) return
 
-        val wakeWords = listOf("nexa", "nessa", "nexa")
-        val wake = wakeWords.firstOrNull { text.contains(it) } ?: return
-        val command = text.substringAfter(wake, "").trim().trim(',', '.', ':', ';')
+        // Aceita pequenas variações naturais sem transformar a NEXA em um chatbot.
+        val wake = listOf("nexa", "nessa").firstOrNull { text.contains(it) } ?: return
+        var command = text.substringAfter(wake, "").trim()
+            .trim(',', '.', ':', ';')
+            .replace(Regex("^por favor[ ,]+"), "")
+            .replace(Regex("^pode[ ,]+"), "")
+            .replace(Regex("^poderia[ ,]+"), "")
+            .trim()
+
         if (command.isBlank()) {
             speak("Estou ouvindo.")
             return
         }
 
+        command = command
+            .replace(Regex("^quero que voce[ ,]+"), "")
+            .replace(Regex("^quero que vc[ ,]+"), "")
+            .replace(Regex("^quero[ ,]+"), "")
+            .replace(Regex("^gostaria que voce[ ,]+"), "")
+            .replace(Regex("^gostaria que vc[ ,]+"), "")
+            .replace(Regex("^gostaria[ ,]+"), "")
+            .trim()
+
         when {
-            command.contains("modo estudo") ||
-                command.contains("modo de estudo") ||
-                command.contains("modo estudar") ||
-                command.contains("ativar modo estudo") ||
-                command.contains("ativa modo estudo") ||
-                command.contains("ativar estudo") ||
-                command.contains("ativa estudo") ||
-                command == "estudo" ||
-                command == "estudar" -> {
+            command.contains("modo estudo") || command.contains("modo de estudo") ||
+                command.contains("modo estudar") || command.contains("ativar modo estudo") ||
+                command.contains("ativa modo estudo") || command.contains("ativar estudo") ||
+                command.contains("ativa estudo") || command == "estudo" || command == "estudar" -> {
                 applyScene("Estudo", true)
                 speak("Modo estudo ativado.")
             }
-            command.contains("modo gaming") ||
-                command.contains("modo game") ||
-                command.contains("modo jogo") ||
-                command.contains("ativar modo gaming") ||
-                command.contains("ativar modo game") ||
-                command.contains("ativa modo gaming") ||
-                command.contains("ativa modo game") ||
-                command.contains("ativar gaming") ||
-                command.contains("ativar game") ||
-                command.contains("ativa gaming") ||
-                command.contains("ativa game") ||
-                command == "gaming" ||
-                command == "game" -> {
+
+            command.contains("modo gaming") || command.contains("modo game") ||
+                command.contains("modo jogo") || command.contains("modo gamer") ||
+                command.contains("ativar modo gaming") || command.contains("ativar modo game") ||
+                command.contains("ativar modo gamer") || command.contains("ativa modo gaming") ||
+                command.contains("ativa modo game") || command.contains("ativa modo gamer") ||
+                command.contains("ativar gaming") || command.contains("ativar game") ||
+                command.contains("ativar gamer") || command.contains("ativa gaming") ||
+                command.contains("ativa game") || command.contains("ativa gamer") ||
+                command == "gaming" || command == "game" || command == "gamer" -> {
                 applyScene("Gaming", true)
                 speak("Modo gaming ativado.")
             }
-            command.contains("modo musica") ||
-                command.contains("modo de musica") ||
-                command.contains("ativar modo musica") ||
-                command.contains("ativa modo musica") ||
-                command.contains("ativar musica") ||
-                command.contains("ativa musica") ||
-                command == "musica" -> {
+
+            command.contains("modo musica") || command.contains("modo de musica") ||
+                command.contains("modo musical") || command.contains("ativar modo musica") ||
+                command.contains("ativa modo musica") || command.contains("ativar musica") ||
+                command.contains("ativa musica") || command == "musica" -> {
                 applyScene("Música", true)
                 speak("Modo música ativado.")
             }
-            command.contains("modo noite") ||
-                command.contains("modo noturno") ||
-                command.contains("ativar modo noite") ||
-                command.contains("ativa modo noite") ||
-                command.contains("ativar modo noturno") ||
-                command.contains("ativa modo noturno") ||
-                command.contains("ativar noite") ||
-                command.contains("ativa noite") ||
-                command == "noite" ||
-                command == "noturno" -> {
+
+            command.contains("modo noite") || command.contains("modo noturno") ||
+                command.contains("ativar modo noite") || command.contains("ativa modo noite") ||
+                command.contains("ativar modo noturno") || command.contains("ativa modo noturno") ||
+                command.contains("ativar noite") || command.contains("ativa noite") ||
+                command == "noite" || command == "noturno" -> {
                 applyScene("Noite", true)
                 speak("Modo noite ativado.")
             }
-            command.contains("modo normal") ||
-                command.contains("modo padrao") ||
-                command.contains("voltar ao normal") ||
-                command.contains("voltar pro normal") ||
-                command.contains("voltar para o normal") ||
-                command.contains("ativar modo normal") ||
-                command.contains("ativa modo normal") ||
-                command.contains("ativar normal") ||
-                command.contains("ativa normal") ||
-                command == "normal" ||
-                command == "padrao" -> {
+
+            command.contains("modo normal") || command.contains("modo padrao") ||
+                command.contains("voltar ao normal") || command.contains("voltar pro normal") ||
+                command.contains("voltar para o normal") || command.contains("ativar modo normal") ||
+                command.contains("ativa modo normal") || command.contains("ativar normal") ||
+                command.contains("ativa normal") || command == "normal" || command == "padrao" -> {
                 applyScene("Normal", true)
                 speak("Modo normal ativado.")
             }
-            command.contains("abrir whatsapp") || command.contains("abre whatsapp") || command.contains("abrir whats") || command.contains("abre whats") || command.contains("abrir zap") || command.contains("abre zap") || command.contains("abrir wpp") || command.contains("abre wpp") -> {
+
+            command.contains("abrir whatsapp") || command.contains("abre whatsapp") ||
+                command.contains("abra whatsapp") || command.contains("abrir whats") ||
+                command.contains("abre whats") || command.contains("abra whats") ||
+                command.contains("abrir zap") || command.contains("abre zap") ||
+                command.contains("abra zap") || command.contains("abrir wpp") ||
+                command.contains("abre wpp") || command.contains("abra wpp") -> {
                 openVoiceApp("com.whatsapp", "WhatsApp")
             }
-            command.contains("abrir youtube") || command.contains("abre youtube") -> openVoiceApp("com.google.android.youtube", "YouTube")
-            command.contains("abrir chrome") || command.contains("abre chrome") || command.contains("abrir navegador") || command.contains("abre navegador") -> openVoiceApp("com.android.chrome", "Chrome")
-            command.contains("abrir configuracoes") || command.contains("abre configuracoes") || command.contains("abrir configuracao") || command.contains("abre configuracao") -> {
+
+            command.contains("abrir youtube") || command.contains("abre youtube") ||
+                command.contains("abra youtube") -> openVoiceApp("com.google.android.youtube", "YouTube")
+
+            command.contains("abrir chrome") || command.contains("abre chrome") ||
+                command.contains("abra chrome") || command.contains("abrir navegador") ||
+                command.contains("abre navegador") || command.contains("abra navegador") -> {
+                openVoiceApp("com.android.chrome", "Chrome")
+            }
+
+            command.contains("abrir configuracoes") || command.contains("abre configuracoes") ||
+                command.contains("abra configuracoes") || command.contains("abrir configuracao") ||
+                command.contains("abre configuracao") || command.contains("abra configuracao") -> {
                 try {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
                     speak("Abrindo as configurações.")
@@ -915,25 +927,38 @@ private lateinit var gameModeView: GameModeView
                     speak("Não consegui abrir as configurações.")
                 }
             }
-            command.contains("abrir aplicativos") || command.contains("abrir apps") || command.contains("gaveta") -> {
+
+            command.contains("abrir aplicativos") || command.contains("abrir apps") ||
+                command.contains("abra aplicativos") || command.contains("abra apps") ||
+                command.contains("gaveta") || command.contains("lista de aplicativos") -> {
                 openDrawer()
                 speak("Abrindo aplicativos.")
             }
-            else -> {
-                // Última tentativa: procurar pelo nome real de qualquer app instalado.
-                // Assim comandos como "Nexa, abra o relógio" não dependem de pacote fixo.
-                val appCommand = command
-                    .removePrefix("abrir ")
-                    .removePrefix("abra ")
-                    .removePrefix("abre ")
-                    .removePrefix("aplicativo ")
-                    .removePrefix("app ")
-                    .trim()
 
-                if (command.startsWith("abrir ") || command.startsWith("abra ") || command.startsWith("abre ")) {
-                    openInstalledAppByName(appCommand)
+            command.contains("voltar") || command.contains("tela inicial") ||
+                command.contains("inicio") || command == "home" -> {
+                if (currentScene == "Gaming") {
+                    applyScene("Normal", true)
+                } else {
+                    closeDrawer()
+                    closeDesk()
+                    closeSettings()
                 }
-                // Se não for um comando de abertura, simplesmente continua ouvindo.
+                speak("Voltando para a tela inicial.")
+            }
+
+            command.startsWith("abrir ") || command.startsWith("abra ") ||
+                command.startsWith("abre ") || command.startsWith("iniciar ") ||
+                command.startsWith("inicia ") || command.startsWith("inicie ") -> {
+                val appCommand = command
+                    .removePrefix("abrir ").removePrefix("abra ").removePrefix("abre ")
+                    .removePrefix("iniciar ").removePrefix("inicia ").removePrefix("inicie ")
+                    .removePrefix("aplicativo ").removePrefix("app ").trim()
+                openInstalledAppByName(appCommand)
+            }
+
+            else -> {
+                // Comandos desconhecidos são ignorados silenciosamente.
             }
         }
     }
