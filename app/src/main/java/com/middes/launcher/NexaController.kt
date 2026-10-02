@@ -29,6 +29,7 @@ class NexaController(
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+    private var active = false
     private var listening = false
     private var speaking = false
     private var bargeIn = false
@@ -87,7 +88,7 @@ class NexaController(
         }
         setEnabled(true)
         speak("Estou ouvindo.")
-        startListening(220L)
+        if (active) startListening(220L)
     }
 
     fun disable() {
@@ -100,16 +101,18 @@ class NexaController(
     }
 
     fun onResume() {
+        active = true
         if (enabledProvider() && microphoneGranted()) startListening(300L)
         else if (!enabledProvider()) onStateChanged(NexaState.OFF)
     }
 
     fun onPause() {
+        active = false
         stopListening()
     }
 
     fun speak(message: String) {
-        if (!ttsReady || message.isBlank()) return
+        if (!active || !ttsReady || message.isBlank()) return
         try {
             tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "nexa-response")
             onStateChanged(NexaState.SPEAKING)
@@ -117,6 +120,7 @@ class NexaController(
     }
 
     fun destroy() {
+        active = false
         stopListening()
         handler.removeCallbacksAndMessages(null)
         try { tts?.stop() } catch (_: Exception) {}
@@ -128,7 +132,7 @@ class NexaController(
     private fun startListening(delayMs: Long) {
         handler.removeCallbacksAndMessages(null)
         handler.postDelayed({
-            if (!enabledProvider() || !microphoneGranted()) return@postDelayed
+            if (!active || !enabledProvider() || !microphoneGranted()) return@postDelayed
             if (speaking && !bargeIn) return@postDelayed
             if (listening) return@postDelayed
             try {
@@ -149,7 +153,7 @@ class NexaController(
 
     private fun restart(delayMs: Long) {
         handler.removeCallbacksAndMessages(null)
-        if (enabledProvider()) startListening(delayMs)
+        if (active && enabledProvider()) startListening(delayMs)
     }
 
     private val utteranceListener = object : UtteranceProgressListener() {
@@ -158,7 +162,7 @@ class NexaController(
             bargeIn = false
             onStateChanged(NexaState.SPEAKING)
             handler.postDelayed({
-                if (enabledProvider() && speaking) {
+                if (active && enabledProvider() && speaking) {
                     bargeIn = true
                     startListening(0L)
                 }
@@ -168,14 +172,14 @@ class NexaController(
         override fun onDone(utteranceId: String?) {
             speaking = false
             bargeIn = false
-            onStateChanged(if (enabledProvider()) NexaState.READY else NexaState.OFF)
+            onStateChanged(if (enabledProvider() && active) NexaState.READY else NexaState.OFF)
             restart(150L)
         }
 
         override fun onError(utteranceId: String?) {
             speaking = false
             bargeIn = false
-            onStateChanged(if (enabledProvider()) NexaState.READY else NexaState.OFF)
+            onStateChanged(if (enabledProvider() && active) NexaState.READY else NexaState.OFF)
             restart(180L)
         }
     }
@@ -196,12 +200,13 @@ class NexaController(
 
         override fun onError(error: Int) {
             listening = false
-            onStateChanged(if (enabledProvider()) NexaState.READY else NexaState.OFF)
-            if (enabledProvider()) restart(if (speaking && bargeIn) 120L else 360L)
+            onStateChanged(if (enabledProvider() && active) NexaState.READY else NexaState.OFF)
+            if (active && enabledProvider()) restart(if (speaking && bargeIn) 120L else 360L)
         }
 
         override fun onResults(results: Bundle?) {
             listening = false
+            if (!active) return
             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
             val phrase = matches.firstOrNull { hasWakeWord(it) }
                 ?: if (bargeIn) "" else matches.firstOrNull().orEmpty()
@@ -227,7 +232,7 @@ class NexaController(
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
-            if (!bargeIn) return
+            if (!active || !bargeIn) return
             val phrase = partialResults
                 ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 ?.firstOrNull()
