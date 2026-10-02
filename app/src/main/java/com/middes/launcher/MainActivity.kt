@@ -319,6 +319,7 @@ private lateinit var gameModeView: GameModeView
         })
 
         val section = textView("ACESSO RÁPIDO", 8.5f, muted, true).apply {
+            tag = "quick-title"
             letterSpacing = 0.14f
         }
         content.addView(section, LinearLayout.LayoutParams(-1, dp(18)).apply {
@@ -1508,33 +1509,100 @@ private lateinit var gameModeView: GameModeView
 
     private fun updateHomeSceneStyle(scene: String, accent: Int) {
         if (!::homeView.isInitialized) return
+
         val summary = homeView.findViewWithTag<View>("scene-summary")
         val title = homeView.findViewWithTag<TextView>("scene-title")
         val subtitle = homeView.findViewWithTag<TextView>("scene-subtitle")
         val value = homeView.findViewWithTag<TextView>("scene-value")
+        val quickTitle = homeView.findViewWithTag<TextView>("quick-title")
 
-        title?.text = when (scene) {
-            "Gaming" -> "Gaming ativo."
-            "Estudo" -> "Foco ativado."
-            "Música" -> "Seu espaço sonoro."
-            "Noite" -> "Ambiente noturno."
-            else -> "Tudo pronto para você."
+        val accentSoft = Color.argb(
+            when (scene) {
+                "Noite" -> 45
+                "Estudo" -> 55
+                "Música" -> 58
+                "Gaming" -> 62
+                else -> 48
+            },
+            Color.red(accent), Color.green(accent), Color.blue(accent)
+        )
+
+        when (scene) {
+            "Estudo" -> {
+                title?.text = "Foco ativado."
+                subtitle?.text = "Um espaço calmo para estudar, organizar tarefas e manter a concentração."
+                value?.text = "FOCO"
+                quickTitle?.text = "FERRAMENTAS DE ESTUDO"
+                homeView.setBackgroundColor(Color.argb(18, 78, 100, 175))
+            }
+            "Música" -> {
+                title?.text = "Seu espaço sonoro."
+                subtitle?.text = "Acesso rápido aos seus players e aplicativos de música."
+                value?.text = "MÚSICA"
+                quickTitle?.text = "SEU ÁUDIO"
+                homeView.setBackgroundColor(Color.argb(18, 150, 55, 125))
+            }
+            "Noite" -> {
+                title?.text = "Ambiente noturno."
+                subtitle?.text = "Interface reduzida para uma experiência mais discreta durante a noite."
+                value?.text = "NOITE"
+                quickTitle?.text = "ACESSO NOTURNO"
+                homeView.setBackgroundColor(Color.argb(28, 45, 32, 78))
+            }
+            "Gaming" -> {
+                title?.text = "Gaming ativo."
+                subtitle?.text = "Desempenho e seus aplicativos de jogo em um ambiente dedicado."
+                value?.text = "GAMING"
+                quickTitle?.text = "SEUS JOGOS"
+                homeView.setBackgroundColor(Color.argb(22, 95, 35, 145))
+            }
+            else -> {
+                title?.text = "Tudo pronto para você."
+                subtitle?.text = "Acesso rápido aos seus aplicativos e ao assistente."
+                value?.text = "NORMAL"
+                quickTitle?.text = "ACESSO RÁPIDO"
+                homeView.setBackgroundColor(Color.TRANSPARENT)
+            }
         }
-        subtitle?.text = when (scene) {
-            "Gaming" -> "Desempenho e seus apps de jogo em um ambiente dedicado."
-            "Estudo" -> "Um ambiente limpo para concentração e organização."
-            "Música" -> "Controles, aplicativos e informações para acompanhar sua música."
-            "Noite" -> "Visual reduzido e confortável para usar no escuro."
-            else -> "Acesso rápido aos seus aplicativos e ao assistente."
+
+        summary?.background = rounded(
+            Color.argb(225, 14, 12, 20),
+            26f,
+            Color.argb(115, Color.red(accent), Color.green(accent), Color.blue(accent))
+        )
+
+        value?.setTextColor(accent)
+        value?.background = rounded(accentSoft, 12f)
+
+        if (::sidebar.isInitialized) {
+            for (i in 0 until sidebar.childCount) {
+                val child = sidebar.getChildAt(i)
+                child.background = rounded(
+                    Color.argb(205, 15, 13, 22),
+                    19f,
+                    Color.argb(70, Color.red(accent), Color.green(accent), Color.blue(accent))
+                )
+            }
         }
-        value?.text = when (scene) {
-            "Gaming" -> "GAMING"
-            "Estudo" -> "FOCO"
-            "Música" -> "MÚSICA"
-            "Noite" -> "NOITE"
-            else -> "NORMAL"
+
+        if (::dock.isInitialized) {
+            dock.background = rounded(Color.argb(225, 10, 9, 15), 24f)
+            for (i in 0 until dock.childCount) {
+                val item = dock.getChildAt(i) as? TextView ?: continue
+                item.setTextColor(if (i == 0) accent else gray)
+            }
         }
-        summary?.background = rounded(Color.argb(220, 14, 12, 20), 26f, Color.argb(115, Color.red(accent), Color.green(accent), Color.blue(accent)))
+
+        if (::overlay.isInitialized) {
+            overlay.setBackgroundColor(
+                when (scene) {
+                    "Noite" -> Color.argb(132, 0, 0, 0)
+                    "Estudo" -> Color.argb(112, 0, 0, 0)
+                    "Música" -> Color.argb(98, 0, 0, 0)
+                    else -> Color.argb(105, 0, 0, 0)
+                }
+            )
+        }
     }
 
     private fun openDrawer() {
