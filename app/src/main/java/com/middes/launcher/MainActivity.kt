@@ -648,7 +648,6 @@ private lateinit var gameModeView: GameModeView
         }
 
         settingsRow(list, "Papel de parede", "Escolher uma imagem da galeria") { chooseWallpaper() }
-        settingsRow(list, "Cena", "Normal, Gaming, Estudo, Música ou Noite") { showSceneChooser() }
         settingsRow(list, "Aplicativos das cenas", "Escolha quais apps aparecem em cada modo") { showSceneAppsChooser() }
         settingsRow(list, "My Desk", "Central de atalhos e informações") { openDesk() }
         settingsRow(list, "Aplicativos", "Abrir a gaveta e pesquisar apps") { openDrawer() }
