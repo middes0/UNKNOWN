@@ -10,7 +10,6 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.Space
-import android.widget.TextView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -26,17 +25,18 @@ class HomeView(
     private val appLabel: (String) -> String?,
     private val appIcon: (String) -> Drawable?,
     private val favoritePackages: () -> List<String>,
-    private val nexaState: () -> NexaState
+    private val nexaState: () -> NexaState,
+    private val onQuickAction: (String) -> Unit
 ) : FrameLayout(context) {
 
-    private val clock = MiddesUi.text(context, "", 72f, MiddesColors.white)
+    private val clock = MiddesUi.text(context, "", 64f, MiddesColors.white)
     private val date = MiddesUi.text(context, "", 10.5f, MiddesColors.muted)
-    private val systemLine = MiddesUi.text(context, "", 8.5f, MiddesColors.muted, true)
-    private val nexaStateText = MiddesUi.text(context, "", 9f, MiddesColors.purpleBright, true)
-    private val battery = MiddesUi.text(context, "—", 8.5f, MiddesColors.muted, true)
+    private val systemLine = MiddesUi.text(context, "", 8f, MiddesColors.muted, true)
+    private val nexaStateText = MiddesUi.text(context, "", 8.5f, MiddesColors.purpleBright, true)
+    private val battery = MiddesUi.text(context, "—", 8.5f, MiddesColors.text, true)
     private val quickApps = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
-        gravity = android.view.Gravity.CENTER_VERTICAL
+        gravity = android.view.Gravity.CENTER
     }
     private var downX = 0f
     private var downY = 0f
@@ -45,6 +45,7 @@ class HomeView(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
+        setBackgroundColor(Color.TRANSPARENT)
         addView(buildContent(), FrameLayout.LayoutParams(-1, -1))
     }
 
@@ -52,108 +53,130 @@ class HomeView(
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(
-                MiddesUi.dp(context, 18f), MiddesUi.dp(context, 20f),
-                MiddesUi.dp(context, 18f), MiddesUi.dp(context, 14f)
+                MiddesUi.dp(context, 18f), MiddesUi.dp(context, 18f),
+                MiddesUi.dp(context, 18f), MiddesUi.dp(context, 12f)
             )
         }
 
         val top = LinearLayout(context).apply { gravity = android.view.Gravity.CENTER_VERTICAL }
-        val brand = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(MiddesUi.text(context, "MIDDES", 14f, MiddesColors.white, true).apply {
-            letterSpacing = 0.23f
-        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)))
-        brand.addView(systemLine, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 18f)))
-        top.addView(brand, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 42f), 1f))
+        val brand = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        brand.addView(MiddesUi.text(context, "MIDDES", 13f, MiddesColors.white, true).apply {
+            letterSpacing = 0.22f
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 20f)))
+        brand.addView(systemLine, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 17f)))
+        top.addView(brand, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 40f), 1f))
+
+        val status = MiddesUi.text(context, "● NEXA", 8f, MiddesColors.purpleBright, true).apply {
+            gravity = android.view.Gravity.CENTER
+            letterSpacing = 0.07f
+            background = MiddesUi.rounded(context, Color.argb(34, 185, 132, 255), 12f)
+        }
+        top.addView(status, LinearLayout.LayoutParams(MiddesUi.dp(context, 68f), MiddesUi.dp(context, 28f)).apply {
+            setMargins(0, 0, MiddesUi.dp(context, 6f), 0)
+        })
 
         battery.gravity = android.view.Gravity.CENTER
-        battery.background = MiddesUi.rounded(context, Color.argb(40, 255, 255, 255), 14f)
-        battery.setPadding(MiddesUi.dp(context, 11f), 0, MiddesUi.dp(context, 11f), 0)
-        top.addView(battery, LinearLayout.LayoutParams(MiddesUi.dp(context, 62f), MiddesUi.dp(context, 30f)).apply {
-            setMargins(0, 0, MiddesUi.dp(context, 7f), 0)
-        })
-        top.addView(MiddesUi.iconButton(context, "⚙", "Configurações") { onOpenSettings() },
-            LinearLayout.LayoutParams(MiddesUi.dp(context, 40f), MiddesUi.dp(context, 34f)))
+        battery.background = MiddesUi.rounded(context, Color.argb(34, 255, 255, 255), 12f)
+        top.addView(battery, LinearLayout.LayoutParams(MiddesUi.dp(context, 58f), MiddesUi.dp(context, 28f)))
         content.addView(top)
 
         date.gravity = android.view.Gravity.CENTER
         content.addView(date, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)).apply {
-            setMargins(0, MiddesUi.dp(context, 22f), 0, 0)
+            setMargins(0, MiddesUi.dp(context, 15f), 0, 0)
         })
-
         clock.gravity = android.view.Gravity.CENTER
         clock.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        content.addView(clock, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 88f)))
+        content.addView(clock, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 76f)))
 
         val coreStage = FrameLayout(context).apply {
             clipChildren = false
             clipToPadding = false
         }
-        addCoreRing(coreStage, 222, 22)
-        addCoreRing(coreStage, 188, 36)
-        val core = MiddesUi.text(context, "NEXA", 24f, MiddesColors.white, true).apply {
-            gravity = android.view.Gravity.CENTER
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            letterSpacing = 0.10f
-            background = MiddesUi.rounded(
-                context,
-                Color.argb(30, 190, 132, 250),
-                160f,
-                Color.argb(125, 190, 132, 250)
-            )
-            setOnClickListener { onOpenNexa() }
-            contentDescription = "Abrir núcleo NEXA"
-        }
-        coreStage.addView(core, FrameLayout.LayoutParams(MiddesUi.dp(context, 154f), MiddesUi.dp(context, 154f), android.view.Gravity.CENTER))
-        content.addView(coreStage, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 205f)).apply {
-            setMargins(0, MiddesUi.dp(context, 6f), 0, 0)
+        val core = MiddesCoreView(context, { nexaState() }, { nexaState() != NexaState.OFF })
+        core.setOnClickListener { onOpenNexa() }
+        core.contentDescription = "Abrir núcleo NEXA"
+        coreStage.addView(core, FrameLayout.LayoutParams(MiddesUi.dp(context, 178f), MiddesUi.dp(context, 178f), android.view.Gravity.CENTER))
+        content.addView(coreStage, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 190f)).apply {
+            setMargins(0, MiddesUi.dp(context, 2f), 0, 0)
         })
 
         nexaStateText.gravity = android.view.Gravity.CENTER
         content.addView(nexaStateText, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)))
 
-        val protocol = MiddesUi.text(context, "VOICE INTERFACE  //  SAY  “NEXA” + COMMAND", 8f, MiddesColors.muted, true).apply {
+        content.addView(MiddesUi.text(context, "DESLIZE ↑ PARA APLICATIVOS  •  ↓ PARA BUSCA", 7.5f, MiddesColors.muted, true).apply {
             gravity = android.view.Gravity.CENTER
-            letterSpacing = 0.10f
-        }
-        content.addView(protocol, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 24f)).apply {
-            setMargins(0, 0, 0, MiddesUi.dp(context, 10f))
+            letterSpacing = 0.07f
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)).apply {
+            setMargins(0, 0, 0, MiddesUi.dp(context, 8f))
+        })
+
+        content.addView(buildQuickBar(), LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 68f)))
+
+        val favoritesTitle = LinearLayout(context).apply { gravity = android.view.Gravity.CENTER_VERTICAL }
+        favoritesTitle.addView(MiddesUi.text(context, "FAVORITOS", 8f, MiddesColors.muted, true).apply {
+            letterSpacing = 0.16f
+        }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 22f), 1f))
+        favoritesTitle.addView(MiddesUi.text(context, "VER TODOS  ›", 7.5f, MiddesColors.purpleBright, true).apply {
+            gravity = android.view.Gravity.CENTER
+            setOnClickListener { onOpenDrawer() }
+        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 74f), MiddesUi.dp(context, 22f)))
+        content.addView(favoritesTitle, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)).apply {
+            setMargins(0, MiddesUi.dp(context, 8f), 0, 0)
         })
 
         val appsCard = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(MiddesUi.dp(context, 13f), MiddesUi.dp(context, 10f), MiddesUi.dp(context, 13f), MiddesUi.dp(context, 7f))
-            background = MiddesUi.rounded(context, Color.argb(92, 10, 10, 17), 22f, Color.argb(38, 255, 255, 255))
+            setPadding(MiddesUi.dp(context, 10f), MiddesUi.dp(context, 4f), MiddesUi.dp(context, 10f), 0)
+            background = MiddesUi.rounded(context, Color.argb(72, 10, 11, 17), 19f, Color.argb(24, 255, 255, 255))
         }
-        appsCard.addView(MiddesUi.text(context, "QUICK ACCESS", 7.5f, MiddesColors.muted, true).apply {
-            letterSpacing = 0.16f
-        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 18f)))
         appsCard.addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
             addView(quickApps, FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 76f)))
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 76f)))
-        content.addView(appsCard, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 104f)))
+        content.addView(appsCard, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 84f)))
 
         content.addView(Space(context), LinearLayout.LayoutParams(1, 0, 1f))
 
         val dock = LinearLayout(context).apply {
             gravity = android.view.Gravity.CENTER
-            background = MiddesUi.rounded(context, Color.argb(205, 7, 7, 12), 24f, Color.argb(34, 255, 255, 255))
-            setPadding(MiddesUi.dp(context, 5f), MiddesUi.dp(context, 4f), MiddesUi.dp(context, 5f), MiddesUi.dp(context, 4f))
+            background = MiddesUi.rounded(context, Color.argb(195, 7, 8, 13), 21f, Color.argb(28, 255, 255, 255))
+            setPadding(MiddesUi.dp(context, 4f), MiddesUi.dp(context, 4f), MiddesUi.dp(context, 4f), MiddesUi.dp(context, 4f))
         }
-        dock.addView(dockItem("⌕", "APPS") { onOpenDrawer() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 56f), 1f))
-        dock.addView(dockItem("✦", "FLOW") { onOpenFlow() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 56f), 1f))
-        dock.addView(dockItem("◉", "NEXA") { onOpenNexa() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 56f), 1f))
-        dock.addView(dockItem("⚙", "SYSTEM") { onOpenSettings() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 56f), 1f))
-        content.addView(dock, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 64f)))
-
+        dock.addView(dockItem("⌕", "APPS") { onOpenDrawer() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
+        dock.addView(dockItem("✦", "FLOW") { onOpenFlow() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
+        dock.addView(dockItem("◌", "NEXA") { onOpenNexa() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
+        dock.addView(dockItem("⚙", "SYSTEM") { onOpenSettings() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
+        content.addView(dock, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 62f)))
         return content
     }
 
-    private fun addCoreRing(parent: FrameLayout, size: Int, alpha: Int) {
-        val ring = TextView(context)
-        ring.background = MiddesUi.rounded(context, Color.TRANSPARENT, size / 2f, Color.argb(alpha, 190, 132, 250))
-        parent.addView(ring, FrameLayout.LayoutParams(MiddesUi.dp(context, size.toFloat()), MiddesUi.dp(context, size.toFloat()), android.view.Gravity.CENTER))
+    private fun buildQuickBar(): View {
+        val bar = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            background = MiddesUi.rounded(context, Color.argb(82, 12, 13, 20), 18f, Color.argb(22, 255, 255, 255))
+            setPadding(MiddesUi.dp(context, 5f), MiddesUi.dp(context, 5f), MiddesUi.dp(context, 5f), MiddesUi.dp(context, 5f))
+        }
+        listOf(
+            "wifi" to "WI-FI",
+            "bluetooth" to "BT",
+            "sound" to "SOM",
+            "display" to "TELA"
+        ).forEach { (id, label) ->
+            val item = MiddesUi.text(context, label, 7.5f, MiddesColors.muted, true).apply {
+                gravity = android.view.Gravity.CENTER
+                letterSpacing = 0.06f
+                background = MiddesUi.rounded(context, Color.argb(20, 255, 255, 255), 14f)
+                setOnClickListener { onQuickAction(id) }
+            }
+            bar.addView(item, LinearLayout.LayoutParams(0, -1, 1f).apply {
+                setMargins(MiddesUi.dp(context, 2f), 0, MiddesUi.dp(context, 2f), 0)
+            })
+        }
+        return bar
     }
 
     private fun dockItem(glyph: String, label: String, action: () -> Unit): LinearLayout =
@@ -161,13 +184,13 @@ class HomeView(
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
             setOnClickListener { action() }
-            addView(MiddesUi.text(context, glyph, 20f, MiddesColors.text, true).apply {
+            addView(MiddesUi.text(context, glyph, 19f, MiddesColors.text, true).apply {
                 gravity = android.view.Gravity.CENTER
-            }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 30f)))
-            addView(MiddesUi.text(context, label, 7.5f, MiddesColors.muted, true).apply {
+            }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 29f)))
+            addView(MiddesUi.text(context, label, 7.2f, MiddesColors.muted, true).apply {
                 gravity = android.view.Gravity.CENTER
-                letterSpacing = 0.06f
-            }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 20f)))
+                letterSpacing = 0.05f
+            }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 19f)))
         }
 
     private fun quickItem(packageName: String, icon: Drawable): LinearLayout =
@@ -176,7 +199,7 @@ class HomeView(
             gravity = android.view.Gravity.CENTER
             setOnClickListener { onLaunchApp(packageName) }
             addView(MiddesUi.appIcon(context, icon, 46), LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 50f)))
-            addView(MiddesUi.text(context, appLabel(packageName).orEmpty(), 8f, MiddesColors.muted).apply {
+            addView(MiddesUi.text(context, appLabel(packageName).orEmpty(), 7.8f, MiddesColors.muted).apply {
                 gravity = android.view.Gravity.CENTER
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -188,7 +211,9 @@ class HomeView(
         date.text = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR")).format(Date())
             .replaceFirstChar { it.uppercaseChar() }
         battery.text = if (batteryPercent >= 0) "$batteryPercent%" else "—"
-        systemLine.text = when (nexaState()) {
+
+        val state = nexaState()
+        systemLine.text = when (state) {
             NexaState.OFF -> "SYSTEM READY  //  VOICE CORE OFFLINE"
             NexaState.READY -> "SYSTEM ONLINE  //  VOICE CORE READY"
             NexaState.LISTENING -> "VOICE LINK ACTIVE  //  LISTENING"
@@ -196,15 +221,15 @@ class HomeView(
             NexaState.EXECUTING -> "VOICE LINK ACTIVE  //  EXECUTING"
             NexaState.SPEAKING -> "VOICE LINK ACTIVE  //  SPEAKING"
         }
-        nexaStateText.text = when (nexaState()) {
+        nexaStateText.text = when (state) {
             NexaState.OFF -> "NEXA  //  OFFLINE"
             NexaState.READY -> "NEXA  //  STANDBY"
-            NexaState.LISTENING -> "NEXA  //  LISTENING"
-            NexaState.PROCESSING -> "NEXA  //  PROCESSING"
-            NexaState.EXECUTING -> "NEXA  //  EXECUTING"
-            NexaState.SPEAKING -> "NEXA  //  SPEAKING"
+            NexaState.LISTENING -> "NEXA  //  OUVINDO"
+            NexaState.PROCESSING -> "NEXA  //  PROCESSANDO"
+            NexaState.EXECUTING -> "NEXA  //  EXECUTANDO"
+            NexaState.SPEAKING -> "NEXA  //  RESPONDENDO"
         }
-        nexaStateText.setTextColor(if (nexaState() == NexaState.OFF) MiddesColors.muted else MiddesColors.purpleBright)
+        nexaStateText.setTextColor(if (state == NexaState.OFF) MiddesColors.muted else MiddesColors.purpleBright)
 
         quickApps.removeAllViews()
         val candidates = (favoritePackages() + listOf(
@@ -216,16 +241,10 @@ class HomeView(
 
         candidates.forEach { pkg ->
             val d = appIcon(pkg) ?: return@forEach
-            quickApps.addView(quickItem(pkg, d), LinearLayout.LayoutParams(MiddesUi.dp(context, 72f), MiddesUi.dp(context, 72f)).apply {
-                setMargins(0, 0, MiddesUi.dp(context, 8f), 0)
+            quickApps.addView(quickItem(pkg, d), LinearLayout.LayoutParams(MiddesUi.dp(context, 72f), MiddesUi.dp(context, 76f)).apply {
+                setMargins(0, 0, MiddesUi.dp(context, 5f), 0)
             })
         }
-        quickApps.addView(MiddesUi.text(context, "+", 22f, MiddesColors.purpleBright, true).apply {
-            gravity = android.view.Gravity.CENTER
-            background = MiddesUi.rounded(context, Color.argb(28, 190, 132, 250), 18f)
-            setOnClickListener { onOpenDrawer() }
-            contentDescription = "Todos os aplicativos"
-        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 60f), MiddesUi.dp(context, 60f)))
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
