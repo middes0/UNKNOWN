@@ -1,6 +1,7 @@
 package com.middes.launcher
 
 import android.app.AlertDialog
+import android.app.UiModeManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.content.Context
@@ -275,6 +276,7 @@ private lateinit var gameModeView: GameModeView
 
         // Cartão principal da cena atual.
         val summary = LinearLayout(this).apply {
+            tag = "scene-summary"
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(15), dp(18), dp(15))
             background = rounded(panelStrong, 24f)
@@ -314,7 +316,18 @@ private lateinit var gameModeView: GameModeView
         }
         summary.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, dp(32)))
 
-        content.addView(summary, LinearLayout.LayoutParams(-1, dp(120)).apply {
+        val sceneExtra = textView("NEXA  •  PRONTA  •  ACESSO RÁPIDO", 8.5f, muted, true).apply {
+            tag = "scene-extra"
+            letterSpacing = 0.08f
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Color.argb(42, 255, 255, 255), 11f)
+            setPadding(dp(10), 0, dp(10), 0)
+        }
+        summary.addView(sceneExtra, LinearLayout.LayoutParams(-1, dp(26)).apply {
+            setMargins(0, dp(7), 0, 0)
+        })
+
+        content.addView(summary, LinearLayout.LayoutParams(-1, dp(155)).apply {
             setMargins(0, dp(12), 0, dp(10))
         })
 
@@ -1500,10 +1513,54 @@ private lateinit var gameModeView: GameModeView
         updateHomeSceneStyle(scene, sceneColor)
         if (::sidebar.isInitialized) buildQuickApps()
 
+        applySystemSceneMode(scene)
+
         if (scene == "Gaming") {
             showGameMode(save)
         } else {
             hideGameMode()
+            animateSceneEntry(scene)
+        }
+    }
+
+    private fun applySystemSceneMode(scene: String) {
+        try {
+            val uiMode = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+            if (scene == "Noite") uiMode.setNightMode(UiModeManager.MODE_NIGHT_YES)
+            else if (scene == "Normal") uiMode.setNightMode(UiModeManager.MODE_NIGHT_NO)
+        } catch (_: Exception) {}
+
+        if (scene == "Noite") {
+            try {
+                if (Settings.System.canWrite(this)) {
+                    if (normalBrightness < 0) normalBrightness = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 180)
+                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 35)
+                    sceneBrightnessApplied = true
+                } else {
+                    window.attributes = window.attributes.apply { screenBrightness = 0.18f }
+                }
+            } catch (_: Exception) {}
+        } else if (sceneBrightnessApplied) {
+            try {
+                if (Settings.System.canWrite(this) && normalBrightness >= 0) Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, normalBrightness.coerceIn(1, 255))
+            } catch (_: Exception) {}
+            sceneBrightnessApplied = false
+            window.attributes = window.attributes.apply { screenBrightness = -1f }
+        }
+    }
+
+    private fun animateSceneEntry(scene: String) {
+        if (!::homeView.isInitialized) return
+        val summary = homeView.findViewWithTag<View>("scene-summary") ?: return
+        val extra = homeView.findViewWithTag<View>("scene-extra")
+        val views = listOf<View?>(summary, extra, sidebar, dock).filterNotNull()
+        views.forEach { it.alpha = 0f }
+        views.forEachIndexed { index, view ->
+            if (scene == "Música") view.translationX = if (index % 2 == 0) -dp(18).toFloat() else dp(18).toFloat()
+            else view.translationY = dp(18).toFloat()
+            val animation = view.animate().alpha(1f).setStartDelay(index * 80L).setDuration(420L)
+            if (scene == "Música") animation.translationX(0f) else animation.translationY(0f)
+            animation.start()
         }
     }
 
@@ -1515,6 +1572,8 @@ private lateinit var gameModeView: GameModeView
         val subtitle = homeView.findViewWithTag<TextView>("scene-subtitle")
         val value = homeView.findViewWithTag<TextView>("scene-value")
         val quickTitle = homeView.findViewWithTag<TextView>("quick-title")
+
+        val extra = homeView.findViewWithTag<TextView>("scene-extra")
 
         val accentSoft = Color.argb(
             when (scene) {
@@ -1532,6 +1591,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Foco ativado."
                 subtitle?.text = "Um espaço calmo para estudar, organizar tarefas e manter a concentração."
                 value?.text = "FOCO"
+                extra?.text = "25 MIN  •  FOCO  •  PAUSA"
                 quickTitle?.text = "FERRAMENTAS DE ESTUDO"
                 homeView.setBackgroundColor(Color.argb(18, 78, 100, 175))
             }
@@ -1539,6 +1599,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Seu espaço sonoro."
                 subtitle?.text = "Acesso rápido aos seus players e aplicativos de música."
                 value?.text = "MÚSICA"
+                extra?.text = "♫  AGORA TOCANDO  •  ABRIR PLAYER"
                 quickTitle?.text = "SEU ÁUDIO"
                 homeView.setBackgroundColor(Color.argb(18, 150, 55, 125))
             }
@@ -1546,6 +1607,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Ambiente noturno."
                 subtitle?.text = "Interface reduzida para uma experiência mais discreta durante a noite."
                 value?.text = "NOITE"
+                extra?.text = "☾  MODO ESCURO  •  BRILHO 14%"
                 quickTitle?.text = "ACESSO NOTURNO"
                 homeView.setBackgroundColor(Color.argb(28, 45, 32, 78))
             }
@@ -1553,6 +1615,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Gaming ativo."
                 subtitle?.text = "Desempenho e seus aplicativos de jogo em um ambiente dedicado."
                 value?.text = "GAMING"
+                extra?.text = "⚡  DESEMPENHO ALTO  •  60 FPS"
                 quickTitle?.text = "SEUS JOGOS"
                 homeView.setBackgroundColor(Color.argb(22, 95, 35, 145))
             }
@@ -1560,6 +1623,7 @@ private lateinit var gameModeView: GameModeView
                 title?.text = "Tudo pronto para você."
                 subtitle?.text = "Acesso rápido aos seus aplicativos e ao assistente."
                 value?.text = "NORMAL"
+                extra?.text = "NEXA  •  PRONTA  •  ACESSO RÁPIDO"
                 quickTitle?.text = "ACESSO RÁPIDO"
                 homeView.setBackgroundColor(Color.TRANSPARENT)
             }
