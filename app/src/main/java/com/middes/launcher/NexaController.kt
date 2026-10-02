@@ -48,7 +48,7 @@ class NexaController(
     init {
         if (available()) {
             recognizer = SpeechRecognizer.createSpeechRecognizer(context).also {
-                it.setRecognitionListener(listener)
+                it.setRecognitionListener(createRecognitionListener())
             }
         }
 
@@ -57,7 +57,7 @@ class NexaController(
             if (ttsReady) {
                 tts?.language = Locale("pt", "BR")
                 tts?.setSpeechRate(1.04f)
-                tts?.setOnUtteranceProgressListener(utteranceListener)
+                tts?.setOnUtteranceProgressListener(createUtteranceListener())
             }
         }
     }
@@ -156,7 +156,7 @@ class NexaController(
         if (active && enabledProvider()) startListening(delayMs)
     }
 
-    private val utteranceListener = object : UtteranceProgressListener() {
+    private fun createUtteranceListener() = object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String?) {
             speaking = true
             bargeIn = false
@@ -184,7 +184,7 @@ class NexaController(
         }
     }
 
-    private val listener = object : RecognitionListener {
+    private fun createRecognitionListener() = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
             listening = true
             onStateChanged(NexaState.LISTENING)
