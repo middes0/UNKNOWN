@@ -192,12 +192,16 @@ class HomeView(
             NexaState.OFF -> "SYSTEM READY  //  VOICE CORE OFFLINE"
             NexaState.READY -> "SYSTEM ONLINE  //  VOICE CORE READY"
             NexaState.LISTENING -> "VOICE LINK ACTIVE  //  LISTENING"
+            NexaState.PROCESSING -> "VOICE LINK ACTIVE  //  PROCESSING"
+            NexaState.EXECUTING -> "VOICE LINK ACTIVE  //  EXECUTING"
             NexaState.SPEAKING -> "VOICE LINK ACTIVE  //  SPEAKING"
         }
         nexaStateText.text = when (nexaState()) {
             NexaState.OFF -> "NEXA  //  OFFLINE"
             NexaState.READY -> "NEXA  //  STANDBY"
             NexaState.LISTENING -> "NEXA  //  LISTENING"
+            NexaState.PROCESSING -> "NEXA  //  PROCESSING"
+            NexaState.EXECUTING -> "NEXA  //  EXECUTING"
             NexaState.SPEAKING -> "NEXA  //  SPEAKING"
         }
         nexaStateText.setTextColor(if (nexaState() == NexaState.OFF) MiddesColors.muted else MiddesColors.purpleBright)
