@@ -228,7 +228,7 @@ class HomeView(
 
         quickApps.addView(
             LinearLayout(context).apply {
-                orientation = VERTICAL
+                orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
                 setOnClickListener { onOpenDrawer() }
                 addView(MiddesUi.text(context, "+", 25f, accent).apply { gravity = android.view.Gravity.CENTER },
@@ -242,7 +242,7 @@ class HomeView(
 
     private fun quickItem(packageName: String, icon: Drawable): LinearLayout =
         LinearLayout(context).apply {
-            orientation = VERTICAL
+            orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
             setOnClickListener { onLaunchApp(packageName) }
             addView(MiddesUi.appIcon(context, icon, 52), LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 54f)))
