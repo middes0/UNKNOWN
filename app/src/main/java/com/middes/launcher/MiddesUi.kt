@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 
 object MiddesColors {
+    val white = Color.WHITE
     val background = Color.rgb(5, 5, 8)
     val surface = Color.rgb(14, 12, 20)
     val surfaceRaised = Color.rgb(20, 17, 28)
