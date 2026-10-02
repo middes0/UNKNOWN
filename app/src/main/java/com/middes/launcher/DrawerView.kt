@@ -227,7 +227,7 @@ class DrawerView(
         val icon = try { app.resolveInfo.loadIcon(context.packageManager) } catch (_: Exception) { null }
         val iconWrap = android.widget.FrameLayout(context)
         if (icon != null) iconWrap.addView(MiddesUi.appIcon(context, icon, 56),
-            android.widget.android.widget.FrameLayout.LayoutParams(-1, MiddesUi.dp(context, 62f), Gravity.CENTER))
+            android.widget.FrameLayout.LayoutParams(-1, MiddesUi.dp(context, 62f), Gravity.CENTER))
         item.addView(iconWrap, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 68f)))
         item.addView(MiddesUi.text(context, app.label, 10f, MiddesColors.text).apply {
             gravity = Gravity.CENTER
