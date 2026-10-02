@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.provider.ContactsContract
 import android.view.View
 import android.util.Log
 import android.view.WindowManager
@@ -150,6 +151,7 @@ class MainActivity : ComponentActivity() {
             onCommand = { raw ->
                 runOnUiThread {
                     if (::nexaView.isInitialized) nexaView.addCommand(raw)
+                    nexa.showProcessing()
                     try {
                         handleNexaCommand(raw)
                     } catch (error: Exception) {
@@ -318,6 +320,7 @@ class MainActivity : ComponentActivity() {
         if (actions.size > 1) {
             executeNexaChain(actions)
         } else {
+            nexa.showExecuting()
             handleNexaSingleCommand(command)
         }
     }
@@ -365,6 +368,7 @@ class MainActivity : ComponentActivity() {
 
     private fun executeNexaAction(command: String): String {
         return try {
+            nexa.showExecuting()
             handleNexaSingleCommand(command, silent = true)
             "ok"
         } catch (error: Exception) {
@@ -471,6 +475,20 @@ class MainActivity : ComponentActivity() {
                 openSystemApp(Intent(Intent.ACTION_VIEW).apply { type = "image/*" }, "a galeria", silent)
             matchesAny(command, "abrir arquivos", "abrir gerenciador", "abrir documentos", "meus arquivos", "arquivos") ->
                 openSystemApp(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE) }, "os arquivos", silent)
+            matchesAny(command, "abrir mensagens", "abrir sms", "abrir chat", "mensagens", "sms") ->
+                openFirstInstalledApp(listOf("com.google.android.apps.messaging", "com.android.mms"), "as mensagens", silent)
+            matchesAny(command, "abrir contatos", "abrir agenda de contatos", "contatos") ->
+                openSystemApp(Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI), "os contatos", silent)
+            matchesAny(command, "abrir calculadora", "abrir calculo", "calculadora") ->
+                openFirstInstalledApp(listOf("com.google.android.calculator", "com.android.calculator2"), "a calculadora", silent)
+            matchesAny(command, "abrir calendario", "abrir agenda", "calendario", "agenda") ->
+                openFirstInstalledApp(listOf("com.google.android.calendar"), "o calendário", silent)
+            matchesAny(command, "abrir mapas", "abrir mapa", "google maps", "mapas") ->
+                openFirstInstalledApp(listOf("com.google.android.apps.maps"), "o Google Maps", silent)
+            matchesAny(command, "abrir relogio", "abrir alarme", "abrir despertador", "relogio", "alarme") ->
+                openSystemApp(Intent("android.intent.action.SHOW_ALARMS"), "o relógio", silent)
+            matchesAny(command, "abrir configuracoes de aplicativos", "abrir gerenciamento de aplicativos", "gerenciar aplicativos") ->
+                openAndroidSettingsPage(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS, "o gerenciamento de aplicativos", silent)
             matchesAny(command, "abrir notificacoes", "abrir notificações", "notificacoes", "notificações") -> {
                 openAndroidSettingsPage("android.settings.NOTIFICATION_SETTINGS", "as configurações de notificações", silent)
             }
@@ -547,6 +565,18 @@ class MainActivity : ComponentActivity() {
         } else {
             showDrawer(true)
             if (!silent) nexa.speak("Não encontrei um aplicativo de música.")
+        }
+    }
+
+    private fun openFirstInstalledApp(packages: List<String>, label: String, silent: Boolean = false) {
+        val packageName = packages.firstOrNull { repo.icon(it) != null }
+        if (packageName != null) {
+            if (!silent) nexa.speak("Abrindo $label.")
+            handler.postDelayed({
+                if (repo.launch(packageName)) store.recordLaunch(packageName)
+            }, 220L)
+        } else if (!silent) {
+            nexa.speak("Não encontrei $label neste aparelho.")
         }
     }
 
