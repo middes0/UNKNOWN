@@ -75,7 +75,7 @@ class DrawerView(
 
         addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
-            addView(favoriteRow, FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 74f)))
+            addView(favoriteRow, android.widget.FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 74f)))
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 8f))
         })
@@ -86,14 +86,14 @@ class DrawerView(
 
         addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
-            addView(recentRow, FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 74f)))
+            addView(recentRow, android.widget.FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 74f)))
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 10f))
         })
 
         val scroll = ScrollView(context).apply {
             overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-            addView(appsRoot, FrameLayout.LayoutParams(-1, -2))
+            addView(appsRoot, android.widget.FrameLayout.LayoutParams(-1, -2))
         }
         addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
@@ -227,7 +227,7 @@ class DrawerView(
         val icon = try { app.resolveInfo.loadIcon(context.packageManager) } catch (_: Exception) { null }
         val iconWrap = android.widget.FrameLayout(context)
         if (icon != null) iconWrap.addView(MiddesUi.appIcon(context, icon, 56),
-            android.widget.FrameLayout.LayoutParams(-1, MiddesUi.dp(context, 62f), Gravity.CENTER))
+            android.widget.android.widget.FrameLayout.LayoutParams(-1, MiddesUi.dp(context, 62f), Gravity.CENTER))
         item.addView(iconWrap, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 68f)))
         item.addView(MiddesUi.text(context, app.label, 10f, MiddesColors.text).apply {
             gravity = Gravity.CENTER
