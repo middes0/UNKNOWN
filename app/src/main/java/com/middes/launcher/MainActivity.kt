@@ -1253,7 +1253,7 @@ private lateinit var gameModeView: GameModeView
             orbitArea.removeAllViews()
             appsRow.removeAllViews()
             val pm = packageManager
-            packages.distinct().take(6).forEachIndexed { index, pkg ->
+            packages.distinct().forEachIndexed { index, pkg ->
                 try {
                     val info = pm.getApplicationInfo(pkg, 0)
                     val item = FrameLayout(context).apply {
