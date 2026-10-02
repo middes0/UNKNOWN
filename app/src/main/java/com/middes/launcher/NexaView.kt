@@ -1,18 +1,17 @@
 package com.middes.launcher
 
-import android.animation.ValueAnimator
-import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Typeface
+import android.graphics.Paint
+import android.graphics.RectF
 import android.view.Gravity
+import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.view.animation.LinearInterpolator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.PI
 import kotlin.math.sin
 
 class NexaView(
@@ -25,222 +24,166 @@ class NexaView(
     private val state: () -> NexaState
 ) : FrameLayout(context) {
 
-    private val stateText = MiddesUi.text(context, "OFFLINE", 10f, MiddesColors.muted, true)
-    private val core = MiddesUi.text(context, "NEXA", 24f, MiddesColors.white, true)
-    private val transcript = MiddesUi.text(context, "Nenhum comando recente.", 12f, MiddesColors.muted)
-    private val hint = MiddesUi.text(context, "", 9.5f, MiddesColors.muted)
+    private val stateText = MiddesUi.text(context, "OFFLINE", 9.5f, MiddesColors.muted, true)
+    private val transcript = MiddesUi.text(context, "Nenhum comando recente.", 11.5f, MiddesColors.muted)
+    private val hint = MiddesUi.text(context, "", 9f, MiddesColors.muted)
     private val history = mutableListOf<String>()
-    private var animatedState: NexaState? = null
-    private var coreAnimator: ValueAnimator? = null
+    private var lastState: NexaState? = null
+    private lateinit var core: MiddesCoreView
+    private lateinit var signal: SignalView
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
         build()
         refresh()
+        alpha = 0f
+        post {
+            animate().alpha(1f).translationY(0f).setDuration(360L).start()
+            if (::core.isInitialized) core.startIntro()
+            if (::signal.isInitialized) signal.start()
+        }
     }
 
     private fun build() {
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(MiddesUi.dp(context, 22f), MiddesUi.dp(context, 24f), MiddesUi.dp(context, 22f), MiddesUi.dp(context, 16f))
+            setPadding(MiddesUi.dp(context, 20f), MiddesUi.dp(context, 18f), MiddesUi.dp(context, 20f), MiddesUi.dp(context, 12f))
         }
         addView(content, LayoutParams(-1, -1))
 
         val top = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addView(MiddesUi.text(context, "MIDDES // VOICE CORE", 10f, MiddesColors.muted, true).apply {
-            letterSpacing = 0.14f
-        }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 28f), 1f))
-        top.addView(MiddesUi.text(context, "×", 30f, MiddesColors.white).apply {
+        top.addView(MiddesUi.text(context, "MIDDES", 11f, MiddesColors.white, true).apply {
+            letterSpacing = 0.16f
+        }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 24f), 1f))
+        top.addView(MiddesUi.text(context, "VOICE CORE", 7.5f, MiddesColors.purpleBright, true).apply {
             gravity = Gravity.CENTER
-            contentDescription = "Voltar"
-            setOnClickListener { onClose() }
-        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 42f), MiddesUi.dp(context, 42f)))
+            background = MiddesUi.rounded(context, Color.argb(32, 185, 132, 255), 11f)
+        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 78f), MiddesUi.dp(context, 25f)))
+        top.addView(MiddesUi.text(context, "×", 28f, MiddesColors.white).apply {
+            gravity = Gravity.CENTER
+            contentDescription = "Fechar NEXA"
+            setOnClickListener { exitAnimated() }
+        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 40f), MiddesUi.dp(context, 40f)))
         content.addView(top)
 
-        content.addView(MiddesUi.text(context, "NEXA", 34f, MiddesColors.white, true).apply {
-            letterSpacing = 0.19f
-        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 46f)).apply {
-            setMargins(0, MiddesUi.dp(context, 18f), 0, 0)
+        val titleRow = LinearLayout(context).apply { gravity = Gravity.BOTTOM }
+        titleRow.addView(MiddesUi.text(context, "NEXA", 35f, MiddesColors.white, true).apply {
+            letterSpacing = 0.15f
+        }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 48f), 1f))
+        titleRow.addView(MiddesUi.text(context, "AI / LOCAL CORE", 7.5f, MiddesColors.muted, true).apply {
+            gravity = Gravity.CENTER
+            letterSpacing = 0.10f
+        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 94f), MiddesUi.dp(context, 28f)))
+        content.addView(titleRow, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 52f)).apply {
+            setMargins(0, MiddesUi.dp(context, 10f), 0, 0)
         })
-        content.addView(MiddesUi.text(context, "NÚCLEO DE COMANDO", 9f, MiddesColors.muted, true).apply {
-            letterSpacing = 0.20f
-        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 24f)))
 
-        val coreWrap = FrameLayout(context).apply {
+        val stage = FrameLayout(context).apply {
             clipChildren = false
             clipToPadding = false
         }
-        addRing(coreWrap, 238, 20)
-        addRing(coreWrap, 208, 44)
-        core.gravity = Gravity.CENTER
-        core.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        core = MiddesCoreView(context, { state() }, enabled)
         core.setOnClickListener { onToggle() }
-        core.background = MiddesUi.rounded(context, Color.argb(32, 185, 132, 255), 180f, Color.argb(135, 185, 132, 255))
-        coreWrap.addView(core, FrameLayout.LayoutParams(MiddesUi.dp(context, 180f), MiddesUi.dp(context, 180f), Gravity.CENTER))
-        content.addView(coreWrap, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 280f)))
+        core.contentDescription = "Ativar ou desativar NEXA"
+        stage.addView(core, FrameLayout.LayoutParams(MiddesUi.dp(context, 205f), MiddesUi.dp(context, 205f), Gravity.CENTER))
+        content.addView(stage, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 220f)).apply {
+            setMargins(0, MiddesUi.dp(context, 6f), 0, 0)
+        })
 
         stateText.gravity = Gravity.CENTER
         content.addView(stateText, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 24f)))
+
         hint.gravity = Gravity.CENTER
-        content.addView(hint, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 34f)))
+        content.addView(hint, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 28f)))
+
+        signal = SignalView(context)
+        content.addView(signal, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 44f)).apply {
+            setMargins(0, MiddesUi.dp(context, 3f), 0, 0)
+        })
 
         val logCard = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(MiddesUi.dp(context, 16f), MiddesUi.dp(context, 14f), MiddesUi.dp(context, 16f), MiddesUi.dp(context, 14f))
-            background = MiddesUi.rounded(context, Color.argb(105, 12, 12, 19), 22f, Color.argb(30, 255, 255, 255))
+            setPadding(MiddesUi.dp(context, 14f), MiddesUi.dp(context, 11f), MiddesUi.dp(context, 14f), MiddesUi.dp(context, 8f))
+            background = MiddesUi.rounded(context, Color.argb(70, 11, 13, 20), 18f, Color.argb(22, 255, 255, 255))
         }
-        logCard.addView(MiddesUi.text(context, "ÚLTIMA ATIVIDADE", 8f, MiddesColors.muted, true), LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 18f)))
+        logCard.addView(MiddesUi.text(context, "NEXA LOG // RECENTE", 7.5f, MiddesColors.muted, true).apply {
+            letterSpacing = 0.13f
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 18f)))
         transcript.gravity = Gravity.CENTER_VERTICAL
-        logCard.addView(transcript, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 48f)))
-        content.addView(logCard, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 84f)).apply {
-            setMargins(0, MiddesUi.dp(context, 12f), 0, 0)
+        transcript.maxLines = 3
+        logCard.addView(transcript, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 47f)))
+        content.addView(logCard, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 77f)).apply {
+            setMargins(0, MiddesUi.dp(context, 8f), 0, 0)
         })
 
-        content.addView(MiddesUi.text(context, "COMANDOS", 8f, MiddesColors.muted, true).apply {
-            letterSpacing = 0.16f
-        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 20f)).apply {
-            setMargins(0, MiddesUi.dp(context, 14f), 0, MiddesUi.dp(context, 4f))
+        content.addView(MiddesUi.text(context, "COMANDOS RÁPIDOS", 7.5f, MiddesColors.muted, true).apply {
+            letterSpacing = 0.13f
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 19f)).apply {
+            setMargins(0, MiddesUi.dp(context, 8f), 0, 0)
         })
 
         val commandRow = LinearLayout(context).apply { gravity = Gravity.CENTER }
-        commandRow.addView(commandHint("“abrir WhatsApp”"), LinearLayout.LayoutParams(0, MiddesUi.dp(context, 42f), 1f).apply {
-            setMargins(0, 0, MiddesUi.dp(context, 4f), 0)
-        })
-        commandRow.addView(commandHint("“modo estudo”"), LinearLayout.LayoutParams(0, MiddesUi.dp(context, 42f), 1f).apply {
-            setMargins(MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 4f), 0)
-        })
-        commandRow.addView(commandHint("“modo gaming”"), LinearLayout.LayoutParams(0, MiddesUi.dp(context, 42f), 1f).apply {
-            setMargins(MiddesUi.dp(context, 4f), 0, 0, 0)
-        })
-        content.addView(commandRow)
+        listOf("“abrir WhatsApp”", "“modo estudo”", "“modo gaming”").forEachIndexed { index, value ->
+            commandRow.addView(commandHint(value), LinearLayout.LayoutParams(0, MiddesUi.dp(context, 39f), 1f).apply {
+                if (index > 0) setMargins(MiddesUi.dp(context, 4f), 0, 0, 0)
+            })
+        }
+        content.addView(commandRow, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 39f)))
+
+        content.addView(View(context), LinearLayout.LayoutParams(1, 0, 1f))
 
         val nav = LinearLayout(context).apply {
             gravity = Gravity.CENTER
-            background = MiddesUi.rounded(context, Color.argb(190, 8, 8, 14), 24f, Color.argb(28, 255, 255, 255))
+            background = MiddesUi.rounded(context, Color.argb(195, 7, 8, 13), 21f, Color.argb(25, 255, 255, 255))
         }
         nav.addView(navItem("APPS") { onApps() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 50f), 1f))
         nav.addView(navItem("FLOW") { onFlow() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 50f), 1f))
-        nav.addView(navItem("NEXA") { onToggle() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 50f), 1f))
-        content.addView(nav, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 56f)).apply {
-            setMargins(0, MiddesUi.dp(context, 14f), 0, 0)
-        })
-    }
-
-    private fun addRing(parent: FrameLayout, size: Int, alpha: Int) {
-        val ring = TextView(context)
-        ring.background = MiddesUi.rounded(context, Color.TRANSPARENT, size / 2f, Color.argb(alpha, 185, 132, 255))
-        parent.addView(ring, FrameLayout.LayoutParams(MiddesUi.dp(context, size.toFloat()), MiddesUi.dp(context, size.toFloat()), Gravity.CENTER))
+        nav.addView(navItem(if (enabled()) "DESATIVAR" else "ATIVAR") { onToggle() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 50f), 1f))
+        content.addView(nav, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 56f)))
     }
 
     private fun commandHint(value: String): TextView =
-        MiddesUi.text(context, value, 8.5f, MiddesColors.muted, true).apply {
+        MiddesUi.text(context, value, 8f, MiddesColors.muted, true).apply {
             gravity = Gravity.CENTER
-            background = MiddesUi.rounded(context, Color.argb(34, 255, 255, 255), 14f)
+            background = MiddesUi.rounded(context, Color.argb(22, 255, 255, 255), 13f)
         }
 
     private fun navItem(label: String, action: () -> Unit): TextView =
-        MiddesUi.text(context, label, 8.5f, MiddesColors.muted, true).apply {
+        MiddesUi.text(context, label, 8f, MiddesColors.muted, true).apply {
             gravity = Gravity.CENTER
-            letterSpacing = 0.08f
+            letterSpacing = 0.07f
             setOnClickListener { action() }
         }
 
     fun refresh() {
-        val currentState = state()
-        stateText.text = when (currentState) {
-            NexaState.OFF -> "OFFLINE"
-            NexaState.READY -> "READY // AGUARDANDO WAKE WORD"
-            NexaState.LISTENING -> "LISTENING // OUVINDO"
-            NexaState.PROCESSING -> "PROCESSING // ANALISANDO COMANDO"
-            NexaState.EXECUTING -> "EXECUTING // EXECUTANDO AÇÃO"
-            NexaState.SPEAKING -> "SPEAKING // RESPOSTA DA NEXA"
+        val current = state()
+        stateText.text = when (current) {
+            NexaState.OFF -> "OFFLINE  //  VOICE LINK CLOSED"
+            NexaState.READY -> "STANDBY  //  ESCUTANDO WAKE WORD"
+            NexaState.LISTENING -> "LISTENING  //  OUVINDO"
+            NexaState.PROCESSING -> "PROCESSING  //  ANALISANDO"
+            NexaState.EXECUTING -> "EXECUTING  //  AÇÃO EM CURSO"
+            NexaState.SPEAKING -> "SPEAKING  //  NEXA RESPONDENDO"
         }
         stateText.setTextColor(if (enabled()) MiddesColors.purpleBright else MiddesColors.muted)
-        core.text = if (enabled()) "NEXA" else "NEXA\nOFF"
-        hint.text = when (currentState) {
+        hint.text = when (current) {
             NexaState.LISTENING -> "Pode falar agora."
-            NexaState.PROCESSING -> "Entendi. Processando seu comando."
-            NexaState.EXECUTING -> "Executando no sistema."
-            NexaState.SPEAKING -> "NEXA está respondendo."
-            else -> if (enabled()) "Diga “NEXA” seguido do comando." else "Toque no núcleo para ativar a interface de voz."
+            NexaState.PROCESSING -> "Comando recebido. Validando."
+            NexaState.EXECUTING -> "Executando a ação solicitada."
+            NexaState.SPEAKING -> "Resposta em andamento."
+            NexaState.OFF -> "Toque no núcleo para ativar."
+            NexaState.READY -> "Diga “NEXA” e depois o comando."
         }
-        if (history.isNotEmpty()) transcript.text = history.takeLast(3).reversed().joinToString("\n") { "› " + it }
-        if (animatedState != currentState) {
-            animatedState = currentState
-            animateCore(currentState)
+        if (history.isNotEmpty()) {
+            transcript.text = history.takeLast(3).reversed().joinToString("\n") { "› " + it }
         }
-    }
-
-    private fun animateCore(currentState: NexaState) {
-        coreAnimator?.cancel()
-        core.clearAnimation()
-        core.rotation = 0f
-        core.scaleX = 1f
-        core.scaleY = 1f
-        core.alpha = 1f
-
-        if (!enabled() || currentState == NexaState.OFF) return
-
-        val duration = when (currentState) {
-            NexaState.READY -> 1800L
-            NexaState.LISTENING -> 650L
-            NexaState.PROCESSING -> 850L
-            NexaState.EXECUTING -> 600L
-            NexaState.SPEAKING -> 500L
-            NexaState.OFF -> 0L
+        if (lastState != current) {
+            lastState = current
+            if (::core.isInitialized) core.refreshAnimation()
+            if (::signal.isInitialized) signal.setState(current)
+        } else if (::signal.isInitialized) {
+            signal.setState(current)
         }
-        if (duration == 0L) return
-
-        coreAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            this.duration = duration
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.RESTART
-            interpolator = LinearInterpolator()
-            addUpdateListener { animator ->
-                val phase = animator.animatedValue as Float
-                val wave = sin(phase * 2f * PI).toFloat()
-                when (currentState) {
-                    NexaState.READY -> {
-                        val scale = 0.985f + (wave + 1f) * 0.0075f
-                        core.scaleX = scale
-                        core.scaleY = scale
-                        core.alpha = 0.9f + (wave + 1f) * 0.05f
-                    }
-                    NexaState.LISTENING -> {
-                        val scale = 0.97f + (wave + 1f) * 0.02f
-                        core.scaleX = scale
-                        core.scaleY = scale
-                        core.alpha = 0.82f + (wave + 1f) * 0.09f
-                    }
-                    NexaState.PROCESSING -> {
-                        core.rotation = phase * 360f
-                        val scale = 0.975f + (wave + 1f) * 0.0175f
-                        core.scaleX = scale
-                        core.scaleY = scale
-                    }
-                    NexaState.EXECUTING -> {
-                        core.rotation = -phase * 360f
-                        val scale = 0.98f + (wave + 1f) * 0.025f
-                        core.scaleX = scale
-                        core.scaleY = scale
-                    }
-                    NexaState.SPEAKING -> {
-                        val scale = 0.97f + (wave + 1f) * 0.025f
-                        core.scaleX = scale
-                        core.scaleY = scale
-                        core.alpha = 0.9f + (wave + 1f) * 0.05f
-                    }
-                    NexaState.OFF -> Unit
-                }
-            }
-            start()
-        }
-    }
-
-    override fun onDetachedFromWindow() {
-        coreAnimator?.cancel()
-        coreAnimator = null
-        super.onDetachedFromWindow()
     }
 
     fun addCommand(value: String) {
@@ -248,5 +191,61 @@ class NexaView(
         history += stamp + "  " + value.trim()
         if (history.size > 8) history.removeAt(0)
         refresh()
+    }
+
+    private fun exitAnimated() {
+        signal.stop()
+        core.stopIntro()
+        animate().alpha(0f).translationY(MiddesUi.dp(context, 16f).toFloat()).setDuration(220L).withEndAction {
+            onClose()
+            alpha = 1f
+            translationY = 0f
+        }.start()
+    }
+
+    override fun onDetachedFromWindow() {
+        if (::signal.isInitialized) signal.stop()
+        if (::core.isInitialized) core.stopIntro()
+        super.onDetachedFromWindow()
+    }
+
+    private class SignalView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f }
+        private var phase = 0f
+        private var active = true
+        private var currentState = NexaState.OFF
+        private val tick = object : Runnable {
+            override fun run() {
+                if (!active) return
+                phase += 0.13f
+                invalidate()
+                postDelayed(this, 32L)
+            }
+        }
+
+        init { post(tick) }
+        fun start() { active = true; removeCallbacks(tick); post(tick) }
+        fun stop() { active = false; removeCallbacks(tick) }
+        fun setState(value: NexaState) { currentState = value; invalidate() }
+
+        override fun onDraw(canvas: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0f || h <= 0f) return
+            val amp = when (currentState) {
+                NexaState.LISTENING -> h * 0.38f
+                NexaState.SPEAKING -> h * 0.32f
+                NexaState.PROCESSING, NexaState.EXECUTING -> h * 0.22f
+                else -> h * 0.09f
+            }
+            paint.color = Color.argb(85, Color.red(MiddesColors.purpleBright), Color.green(MiddesColors.purpleBright), Color.blue(MiddesColors.purpleBright))
+            val path = android.graphics.Path()
+            path.moveTo(0f, h / 2f)
+            for (x in 0..w.toInt() step 5) {
+                val y = h / 2f + sin(x * 0.055f + phase) * amp * sin((x / w) * Math.PI).toFloat()
+                if (x == 0) path.moveTo(x.toFloat(), y) else path.lineTo(x.toFloat(), y)
+            }
+            canvas.drawPath(path, paint)
+        }
     }
 }
