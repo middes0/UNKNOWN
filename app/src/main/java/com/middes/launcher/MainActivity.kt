@@ -276,6 +276,7 @@ private lateinit var gameModeView: GameModeView
 
         // Cartão principal da cena atual.
         val summary = LinearLayout(this).apply {
+            tag = "scene-summary"
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(15), dp(18), dp(15))
             background = rounded(panelStrong, 24f)
@@ -1512,11 +1513,12 @@ private lateinit var gameModeView: GameModeView
         updateHomeSceneStyle(scene, sceneColor)
         if (::sidebar.isInitialized) buildQuickApps()
 
+        applySystemSceneMode(scene)
+
         if (scene == "Gaming") {
             showGameMode(save)
         } else {
             hideGameMode()
-            applySystemSceneMode(scene)
             animateSceneEntry(scene)
         }
     }
