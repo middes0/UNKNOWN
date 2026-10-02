@@ -16,17 +16,10 @@ object SceneManager {
         else -> MiddesColors.purpleBright
     }
 
+    @Deprecated("Use SceneProtocolController from MainActivity.")
     fun applySystem(context: Context, window: Window, scene: String) {
-        // Os protocolos do MIDDES não alteram o modo global do Android.
-        // Isso evita que o Android recrie a Activity durante comandos da NEXA.
-        try {
-            val params = window.attributes
-            params.screenBrightness =
-                if (scene == "Noite") 0.18f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-            window.attributes = params
-        } catch (_: Exception) {
-            // O protocolo continua funcionando mesmo se o sistema bloquear o brilho.
-        }
+        // Mantido por compatibilidade com versões anteriores. Os efeitos reais
+        // de cena agora ficam centralizados no SceneProtocolController.
     }
 
     fun description(scene: String, hour: Int): Pair<String, String> = when (scene) {
