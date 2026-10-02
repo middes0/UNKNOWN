@@ -49,7 +49,7 @@ class MiddesFlowView(
         addView(MiddesUi.text(context, "FLOW", 13f, MiddesColors.white, true).apply {
             gravity = Gravity.CENTER
             background = MiddesUi.rounded(context, Color.argb(230, 19, 15, 28), 50f,
-                Color.argb(170, MiddesColors.purpleBright))
+                MiddesColors.purpleBright)
             contentDescription = "Fechar Flow"
             setOnClickListener { onClose() }
         }, LayoutParams(MiddesUi.dp(context, 94f), MiddesUi.dp(context, 94f), Gravity.CENTER))
