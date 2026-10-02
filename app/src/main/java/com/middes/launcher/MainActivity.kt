@@ -144,7 +144,10 @@ class MainActivity : ComponentActivity() {
                 if (::sceneView.isInitialized) sceneView.performExitAnimation()
                 else applyScene("Normal", true)
             }
-            Screen.GAME -> applyScene("Normal", true)
+            Screen.GAME -> {
+                if (::gameView.isInitialized) gameView.performExitAnimation()
+                else applyScene("Normal", true)
+            }
         }
     }
 
