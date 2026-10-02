@@ -303,7 +303,7 @@ class MainActivity : ComponentActivity() {
 
         setContentView(root)
         applyWallpaper()
-        hudView.setAccent(MiddesColors.purpleBright)
+        hudView.setMode("Normal")
         refreshHome()
     }
 
@@ -812,6 +812,7 @@ class MainActivity : ComponentActivity() {
         screen = Screen.HOME
         if (::gameView.isInitialized) gameView.stop()
         if (::flowView.isInitialized) flowView.stop()
+        if (::hudView.isInitialized) hudView.setMode("Normal")
         setScreenVisibility(screen)
         refreshHome()
     }
@@ -862,6 +863,7 @@ class MainActivity : ComponentActivity() {
 
         return try {
             if (save) store.scene = scene
+            if (::hudView.isInitialized) hudView.setMode(scene)
             if (scene != "Estudo") {
                 studyRunning = false
                 handler.removeCallbacks(studyTicker)
