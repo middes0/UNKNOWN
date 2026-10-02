@@ -967,7 +967,21 @@ private lateinit var gameModeView: GameModeView
                         if (voiceEnabled && !speaking) restartNexaListening(120)
                     }
                 }
-                override fun onPartialResults(partialResults: Bundle?) = Unit
+                override fun onPartialResults(partialResults: Bundle?) {
+                    if (speaking && bargeInListening) {
+                        val partial = partialResults?.getStringArrayList(
+                            SpeechRecognizer.RESULTS_RECOGNITION
+                        )?.firstOrNull().orEmpty()
+                        val normalized = normalizeVoice(partial)
+                        if (normalized.contains("nexa") || normalized.contains("nessa")) {
+                            try { speechRecognizer?.cancel() } catch (_: Exception) {}
+                            bargeInListening = false
+                            speaking = false
+                            try { tts.stop() } catch (_: Exception) {}
+                            handleNexaCommand(partial)
+                        }
+                    }
+                }
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
             })
         }
