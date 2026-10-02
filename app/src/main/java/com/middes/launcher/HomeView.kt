@@ -133,7 +133,7 @@ class HomeView(
         content.addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-            addView(quickApps, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 88f)))
+            addView(quickApps, FrameLayout.LayoutParams(-2, MiddesUi.dp(context, 88f)))
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 88f)))
 
         content.addView(Space(context), LinearLayout.LayoutParams(1, 0, 1f))
