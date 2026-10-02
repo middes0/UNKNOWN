@@ -92,7 +92,7 @@ class MiddesHudView(context: Context) : View(context) {
         canvas.drawLine(w * 0.18f, dp(30f), w * 0.34f, dp(30f), paint)
         canvas.drawLine(w * 0.66f, dp(30f), w * 0.82f, dp(30f), paint)
 
-        val scanY = dp(48f) + ((h - dp(120f)) * phase)
+        val scanY = dp(48f).toFloat() + ((h - dp(120f).toFloat()) * phase)
         paint.color = Color.argb(a(12), Color.red(accent), Color.green(accent), Color.blue(accent))
         canvas.drawLine(w * 0.08f, scanY, w * 0.92f, scanY, paint)
 
@@ -100,9 +100,9 @@ class MiddesHudView(context: Context) : View(context) {
         fill.color = Color.argb(a(80), Color.red(accent), Color.green(accent), Color.blue(accent))
         for (i in 0 until 10) {
             val px = w * (0.08f + (i / 9f) * 0.84f)
-            val py = if (i % 2 == 0) dp(56f) else h - dp(82f)
+            val py = if (i % 2 == 0) dp(56f).toFloat() else h - dp(82f).toFloat()
             val pulse = ((sin(phase * Math.PI * 2.0 + i) + 1.0) * 0.5).toFloat()
-            canvas.drawCircle(px, py, dp(0.8f) + pulse * dp(0.9f), fill)
+            canvas.drawCircle(px, py, dp(0.8f).toFloat() + pulse * dp(0.9f).toFloat(), fill)
         }
 
         // Mode-specific micro-markers.
@@ -118,7 +118,7 @@ class MiddesHudView(context: Context) : View(context) {
             }
             "Noite" -> {
                 paint.color = Color.argb(a(45), 210, 214, 240)
-                canvas.drawCircle(w * 0.87f, h * 0.20f, dp(2f), paint)
+                canvas.drawCircle(w * 0.87f, h * 0.20f, dp(2f).toFloat(), paint)
             }
             "Gaming" -> {
                 paint.color = Color.argb(a(75), Color.red(MiddesColors.gaming), Color.green(MiddesColors.gaming), Color.blue(MiddesColors.gaming))
