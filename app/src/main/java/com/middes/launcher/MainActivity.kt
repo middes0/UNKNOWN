@@ -1045,6 +1045,7 @@ private lateinit var gameModeView: GameModeView
         }
 
         command = command
+            .replace(Regex("\\b(?:o|a)\\s+modo\\b"), "modo")
             .replace(Regex("^quero que voce[ ,]+"), "")
             .replace(Regex("^quero que vc[ ,]+"), "")
             .replace(Regex("^quero[ ,]+"), "")
@@ -1155,7 +1156,9 @@ private lateinit var gameModeView: GameModeView
                 val appCommand = command
                     .removePrefix("abrir ").removePrefix("abra ").removePrefix("abre ")
                     .removePrefix("iniciar ").removePrefix("inicia ").removePrefix("inicie ")
-                    .removePrefix("aplicativo ").removePrefix("app ").trim()
+                    .removePrefix("aplicativo ").removePrefix("app ")
+                    .replace(Regex("^(o|a|os|as)\\s+"), "")
+                    .trim()
                 openInstalledAppByName(appCommand)
             }
 
