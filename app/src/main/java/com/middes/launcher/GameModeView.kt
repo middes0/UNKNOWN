@@ -26,6 +26,7 @@ class GameModeView(
     private val orbit = FrameLayout(context)
     private var running = false
     private var angle = 0.0
+    private var exiting = false
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -98,7 +99,7 @@ class GameModeView(
             gravity = Gravity.CENTER
             background = MiddesUi.rounded(context, Color.argb(220, 10, 9, 15), 25f)
         }
-        nav.addView(navItem("INÍCIO") { onExit() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
+        nav.addView(navItem("INÍCIO") { exitAnimated() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         nav.addView(navItem("APPS") { onApps() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         nav.addView(navItem("NEXA") { onNexa() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         content.addView(nav, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 60f)))
@@ -106,13 +107,14 @@ class GameModeView(
         addView(MiddesUi.text(context, "×", 26f, MiddesColors.text).apply {
             gravity = Gravity.CENTER
             contentDescription = "Sair do Gaming"
-            setOnClickListener { onExit() }
+            setOnClickListener { exitAnimated() }
         }, LayoutParams(MiddesUi.dp(context, 46f), MiddesUi.dp(context, 46f), Gravity.TOP or Gravity.END).apply {
             topMargin = MiddesUi.dp(context, 14f)
         })
     }
 
     fun start(appPackages: List<String>, animate: Boolean) {
+        exiting = false
         running = true
         updateClock()
         setApps(appPackages)
@@ -132,6 +134,27 @@ class GameModeView(
         removeCallbacks(ticker)
         animate().cancel()
         alpha = 0f
+        exiting = false
+    }
+
+    fun performExitAnimation() {
+        exitAnimated()
+    }
+
+    private fun exitAnimated() {
+        if (exiting) return
+        exiting = true
+        running = false
+        removeCallbacks(ticker)
+        animate().alpha(0f).scaleX(0.94f).scaleY(0.94f).translationY(MiddesUi.dp(context, 18f).toFloat())
+            .setDuration(220L).withEndAction {
+                onExit()
+                alpha = 1f
+                scaleX = 1f
+                scaleY = 1f
+                translationY = 0f
+                exiting = false
+            }.start()
     }
 
     private fun metric(parent: LinearLayout, title: String) {
