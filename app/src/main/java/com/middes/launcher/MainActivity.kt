@@ -1166,6 +1166,13 @@ private lateinit var gameModeView: GameModeView
                 openInstalledAppByName(appCommand)
             }
 
+            command.startsWith("fechar ") || command.startsWith("fecha ") ||
+                command.contains("fechar aplicativos") || command.contains("fechar gaveta") -> {
+                closeDrawer()
+                closeDesk()
+                closeSettings()
+            }
+
             else -> {
                 // Comandos desconhecidos são ignorados silenciosamente.
             }
