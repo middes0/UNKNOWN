@@ -315,6 +315,31 @@ class MainActivity : ComponentActivity() {
         }
 
         when {
+            matchesAny(command, "trocar cena", "troca a cena", "troque a cena", "mudar cena", "muda a cena", "mude a cena") -> {
+                when {
+                    command.contains("estudo") || command.contains("estudar") -> {
+                        applyScene("Estudo", true)
+                        nexa.speak("Modo estudo ativado.")
+                    }
+                    command.contains("gaming") || command.contains("game") || command.contains("gamer") -> {
+                        applyScene("Gaming", true)
+                        nexa.speak("Modo gaming ativado.")
+                    }
+                    command.contains("musica") || command.contains("musical") -> {
+                        applyScene("Música", true)
+                        nexa.speak("Modo música ativado.")
+                    }
+                    command.contains("noite") || command.contains("noturno") -> {
+                        applyScene("Noite", true)
+                        nexa.speak("Modo noite ativado.")
+                    }
+                    command.contains("normal") || command.contains("padrao") -> {
+                        applyScene("Normal", true)
+                        nexa.speak("Modo normal ativado.")
+                    }
+                    else -> nexa.speak("Qual cena você quer ativar?")
+                }
+            }
             matchesAny(command, "ativar modo estudo", "ativa modo estudo", "modo estudo", "ativar estudo", "estudo", "estudar") -> {
                 applyScene("Estudo", true)
                 nexa.speak("Modo estudo ativado.")
