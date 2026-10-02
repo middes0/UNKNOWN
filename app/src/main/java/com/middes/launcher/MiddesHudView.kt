@@ -89,8 +89,8 @@ class MiddesHudView(context: Context) : View(context) {
         canvas.drawLine(w - x, h - dp(70f).toFloat(), w - x, h - dp(70f).toFloat() - len, paint)
 
         paint.color = Color.argb(a(24), 255, 255, 255)
-        canvas.drawLine(w * 0.18f, dp(30f), w * 0.34f, dp(30f), paint)
-        canvas.drawLine(w * 0.66f, dp(30f), w * 0.82f, dp(30f), paint)
+        canvas.drawLine(w * 0.18f, dp(30f).toFloat(), w * 0.34f, dp(30f).toFloat(), paint)
+        canvas.drawLine(w * 0.66f, dp(30f).toFloat(), w * 0.82f, dp(30f).toFloat(), paint)
 
         val scanY = dp(48f).toFloat() + ((h - dp(120f).toFloat()) * phase)
         paint.color = Color.argb(a(12), Color.red(accent), Color.green(accent), Color.blue(accent))
