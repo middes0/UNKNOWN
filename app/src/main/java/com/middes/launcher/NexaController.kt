@@ -15,7 +15,7 @@ import android.speech.tts.UtteranceProgressListener
 import androidx.core.content.ContextCompat
 import java.util.Locale
 
-enum class NexaState { OFF, READY, LISTENING, SPEAKING }
+enum class NexaState { OFF, READY, LISTENING, PROCESSING, EXECUTING, SPEAKING }
 
 class NexaController(
     private val context: Context,
@@ -109,6 +109,14 @@ class NexaController(
     fun onPause() {
         active = false
         stopListening()
+    }
+
+    fun showProcessing() {
+        if (active && enabledProvider()) onStateChanged(NexaState.PROCESSING)
+    }
+
+    fun showExecuting() {
+        if (active && enabledProvider()) onStateChanged(NexaState.EXECUTING)
     }
 
     fun speak(message: String) {
