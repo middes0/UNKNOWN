@@ -399,7 +399,7 @@ class MainActivity : ComponentActivity() {
             matchesAny(command, "abrir arquivos", "abrir gerenciador", "abrir documentos", "meus arquivos", "arquivos") ->
                 openSystemApp(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE) }, "os arquivos")
             matchesAny(command, "abrir notificacoes", "abrir notificações", "notificacoes", "notificações") -> {
-                openAndroidSettingsPage(Settings.ACTION_NOTIFICATION_SETTINGS, "as configurações de notificações")
+                openAndroidSettingsPage("android.settings.NOTIFICATION_SETTINGS", "as configurações de notificações")
             }
             matchesAny(command, "abrir bluetooth", "bluetooth") -> {
                 openAndroidSettingsPage(Settings.ACTION_BLUETOOTH_SETTINGS, "as configurações de Bluetooth")
