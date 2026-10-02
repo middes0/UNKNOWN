@@ -922,11 +922,11 @@ private lateinit var gameModeView: GameModeView
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 900L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 650L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2200L)
         }
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -967,7 +967,21 @@ private lateinit var gameModeView: GameModeView
                         if (voiceEnabled && !speaking) restartNexaListening(120)
                     }
                 }
-                override fun onPartialResults(partialResults: Bundle?) = Unit
+                override fun onPartialResults(partialResults: Bundle?) {
+                    if (speaking && bargeInListening) {
+                        val partial = partialResults?.getStringArrayList(
+                            SpeechRecognizer.RESULTS_RECOGNITION
+                        )?.firstOrNull().orEmpty()
+                        val normalized = normalizeVoice(partial)
+                        if (normalized.contains("nexa") || normalized.contains("nessa")) {
+                            try { speechRecognizer?.cancel() } catch (_: Exception) {}
+                            bargeInListening = false
+                            speaking = false
+                            try { tts.stop() } catch (_: Exception) {}
+                            handleNexaCommand(partial)
+                        }
+                    }
+                }
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
             })
         }
