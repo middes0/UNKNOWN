@@ -325,7 +325,7 @@ class MainActivity : ComponentActivity() {
     private fun splitNexaChain(command: String): List<String> {
         val normalized = command
             .replace(Regex("\\s+e depois\\s+"), " e ")
-            .replace(Regex("\\s+depois\\s+"), " e ")
+            .replace(Regex("\\s+depois\\s+"), " e ")\n            .replace(Regex("\\s+em seguida\\s+"), " e ")\n            .replace(Regex("\\s+dai\\s+"), " e ")\n            .replace(Regex("\\s+daí\\s+"), " e ")
             .replace(Regex("\\s*,\\s*"), " e ")
             .replace(Regex("\\s+tambem\\s+"), " e ")
             .replace(Regex("\\s+também\\s+"), " e ")
