@@ -529,34 +529,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun performHomeSceneAction() {
-        when (store.scene) {
-            "Estudo" -> {
-                if (studyRunning) {
-                    studyRunning = false
-                    handler.removeCallbacks(studyTicker)
-                } else {
-                    startStudy()
-                }
-                refreshHome()
-            }
-            "Música" -> openMusicPlayer()
-        }
-    }
-
-    private fun startStudy() {
-        if (studyRemainingSeconds <= 0) studyRemainingSeconds = 25 * 60
-        studyRunning = true
-        handler.removeCallbacks(studyTicker)
-        handler.post(studyTicker)
-    }
-
-    private fun formatStudyTime(): String {
-        val minutes = studyRemainingSeconds / 60
-        val seconds = studyRemainingSeconds % 60
-        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-    }
-
     private fun matchesAny(command: String, vararg values: String): Boolean =
         values.any { command == it || command.contains(it) }
 
