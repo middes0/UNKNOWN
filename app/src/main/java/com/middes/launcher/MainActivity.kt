@@ -5,12 +5,14 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.media.AudioManager
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.provider.ContactsContract
+import android.view.KeyEvent
 import android.view.View
 import android.util.Log
 import android.view.WindowManager
@@ -498,6 +500,53 @@ class MainActivity : ComponentActivity() {
             matchesAny(command, "abrir wifi", "wi fi", "wifi") -> {
                 openAndroidSettingsPage(Settings.ACTION_WIFI_SETTINGS, "as configurações de Wi-Fi", silent)
             }
+            matchesAny(command, "pausar musica", "pausa musica", "parar musica", "para musica", "pause a musica", "pausa a musica", "pare a musica") -> {
+                sendMediaKey(KeyEvent.KEYCODE_MEDIA_PAUSE, "pausar a música", silent)
+            }
+            matchesAny(command, "continuar musica", "continua musica", "retomar musica", "retoma musica", "tocar musica", "toca musica", "reproduzir musica", "reproduza musica") -> {
+                sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY, "continuar a música", silent)
+            }
+            matchesAny(command, "proxima musica", "proxima faixa", "proximo musica", "proximo faixa", "pular musica", "pular faixa", "avancar musica", "avancar faixa") -> {
+                sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT, "a próxima música", silent)
+            }
+            matchesAny(command, "musica anterior", "faixa anterior", "voltar faixa", "voltar musica", "retroceder musica", "retroceder faixa") -> {
+                sendMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS, "a música anterior", silent)
+            }
+            matchesAny(command, "aumentar volume", "aumenta volume", "subir volume", "sobe volume", "mais volume", "volume mais alto") -> {
+                adjustMusicVolume(AudioManager.ADJUST_RAISE, "volume aumentado", silent)
+            }
+            matchesAny(command, "diminuir volume", "diminui volume", "baixar volume", "baixa volume", "menos volume", "volume mais baixo") -> {
+                adjustMusicVolume(AudioManager.ADJUST_LOWER, "volume reduzido", silent)
+            }
+            matchesAny(command, "silenciar volume", "silencia volume", "mutar volume", "muta volume", "volume mudo", "modo silencioso") -> {
+                adjustMusicVolume(AudioManager.ADJUST_MUTE, "volume silenciado", silent)
+            }
+            matchesAny(command, "abrir configuracoes de som", "abrir configuracao de som", "abrir som", "configuracoes de som", "configuracao de som") -> {
+                openAndroidSettingsPage(Settings.ACTION_SOUND_SETTINGS, "as configurações de som", silent)
+            }
+            matchesAny(command, "abrir configuracoes de tela", "abrir configuracao de tela", "abrir tela", "configuracoes de tela", "configuracao de tela", "tela") -> {
+                openAndroidSettingsPage(Settings.ACTION_DISPLAY_SETTINGS, "as configurações de tela", silent)
+            }
+            matchesAny(command, "abrir bateria", "configuracoes de bateria", "configuracao de bateria", "bateria", "economia de bateria") -> {
+                openAndroidSettingsPage(Settings.ACTION_BATTERY_SAVER_SETTINGS, "as configurações de bateria", silent)
+            }
+            matchesAny(command, "abrir permissoes", "abrir permissao", "configuracoes de privacidade", "configuracao de privacidade", "privacidade", "permissoes") -> {
+                openAndroidSettingsPage(Settings.ACTION_PRIVACY_SETTINGS, "as configurações de privacidade", silent)
+            }
+            matchesAny(command, "informacoes do aparelho", "informacoes do dispositivo", "informacoes do celular", "sobre o aparelho", "sobre o dispositivo", "sobre o celular") -> {
+                openAndroidSettingsPage(Settings.ACTION_DEVICE_INFO_SETTINGS, "as informações do aparelho", silent)
+            }
+            matchesAny(command, "voltar", "volte", "volta", "fechar isso", "fecha isso", "feche isso", "fechar tela", "fechar esta tela", "sair daqui") -> {
+                navigateBack(silent)
+            }
+            matchesAny(command, "ir para home", "vai para home", "voltar para home", "volta para home", "ir para tela inicial", "vai para tela inicial", "mostrar home", "mostrar tela inicial", "tela inicial", "inicio") -> {
+                showHome()
+                if (!silent) nexa.speak("Voltando para a tela inicial.")
+            }
+            matchesAny(command, "abrir meus aplicativos", "abre meus aplicativos", "abra meus aplicativos", "meus aplicativos", "meus apps", "abrir lista de aplicativos", "abrir lista de apps") -> {
+                showDrawer(false)
+                if (!silent) nexa.speak("Abrindo os aplicativos.")
+            }
             matchesAny(command, "abrir configuracoes", "abrir configuracao", "abre configuracoes", "abra configuracoes") -> {
                 openAndroidSettings(silent)
                 if (!silent) nexa.speak("Abrindo as configurações.")
@@ -506,8 +555,8 @@ class MainActivity : ComponentActivity() {
                 showDrawer(false)
                 if (!silent) nexa.speak("Abrindo os aplicativos.")
             }
-            matchesAny(command, "voltar", "tela inicial", "inicio", "home") -> {
-                if (store.scene == "Gaming") applyScene("Normal", true) else showHome()
+            matchesAny(command, "home") -> {
+                showHome()
                 if (!silent) nexa.speak("Voltando para a tela inicial.")
             }
             command.startsWith("abrir ") || command.startsWith("abre ") || command.startsWith("abra ") ||
@@ -551,6 +600,47 @@ class MainActivity : ComponentActivity() {
         val minutes = studyRemainingSeconds / 60
         val seconds = studyRemainingSeconds % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
+
+    private fun sendMediaKey(keyCode: Int, label: String, silent: Boolean = false) {
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audioManager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+            audioManager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+            if (!silent) nexa.speak("Comando enviado para $label.")
+        } catch (error: Exception) {
+            Log.e("NEXA", "Falha no controle de mídia: $keyCode", error)
+            if (!silent) nexa.speak("Não consegui controlar a reprodução de mídia.")
+            throw error
+        }
+    }
+
+    private fun adjustMusicVolume(direction: Int, successMessage: String, silent: Boolean = false) {
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audioManager.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                direction,
+                AudioManager.FLAG_SHOW_UI
+            )
+            if (!silent) nexa.speak(successMessage)
+        } catch (error: Exception) {
+            Log.e("NEXA", "Falha ao ajustar volume", error)
+            if (!silent) nexa.speak("Não consegui ajustar o volume.")
+            throw error
+        }
+    }
+
+    private fun navigateBack(silent: Boolean = false) {
+        when (screen) {
+            Screen.HOME -> {
+                if (!silent) nexa.speak("Já estou na tela inicial.")
+            }
+            Screen.DRAWER, Screen.SETTINGS, Screen.NEXA, Screen.FLOW, Screen.SCENE, Screen.GAME -> {
+                showHome()
+                if (!silent) nexa.speak("Voltando.")
+            }
+        }
     }
 
     private fun openMusicPlayer(silent: Boolean = false) {
