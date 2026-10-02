@@ -370,7 +370,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleNexaSingleCommand(command: String, silent: Boolean = false) {\n        val command = normalizeNexaAction(command)
+    private fun handleNexaSingleCommand(command: String, silent: Boolean = false) {
+        val command = normalizeNexaAction(command)
         when {
             isSceneChangeRequest(command) -> {
                 val target = sceneFromCommand(command)
