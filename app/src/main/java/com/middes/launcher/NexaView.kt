@@ -1,5 +1,6 @@
 package com.middes.launcher
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -7,9 +8,12 @@ import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.view.animation.LinearInterpolator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.sin
 
 class NexaView(
     context: Context,
@@ -26,6 +30,8 @@ class NexaView(
     private val transcript = MiddesUi.text(context, "Nenhum comando recente.", 12f, MiddesColors.muted)
     private val hint = MiddesUi.text(context, "", 9.5f, MiddesColors.muted)
     private val history = mutableListOf<String>()
+    private var animatedState: NexaState? = null
+    private var coreAnimator: ValueAnimator? = null
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
@@ -140,16 +146,101 @@ class NexaView(
         }
 
     fun refresh() {
-        stateText.text = when (state()) {
+        val currentState = state()
+        stateText.text = when (currentState) {
             NexaState.OFF -> "OFFLINE"
             NexaState.READY -> "READY // AGUARDANDO WAKE WORD"
-            NexaState.LISTENING -> "LISTENING // PROCESSANDO VOZ"
+            NexaState.LISTENING -> "LISTENING // OUVINDO"
+            NexaState.PROCESSING -> "PROCESSING // ANALISANDO COMANDO"
+            NexaState.EXECUTING -> "EXECUTING // EXECUTANDO AÇÃO"
             NexaState.SPEAKING -> "SPEAKING // RESPOSTA DA NEXA"
         }
         stateText.setTextColor(if (enabled()) MiddesColors.purpleBright else MiddesColors.muted)
         core.text = if (enabled()) "NEXA" else "NEXA\nOFF"
-        hint.text = if (enabled()) "Diga “NEXA” seguido do comando." else "Toque no núcleo para ativar a interface de voz."
+        hint.text = when (currentState) {
+            NexaState.LISTENING -> "Pode falar agora."
+            NexaState.PROCESSING -> "Entendi. Processando seu comando."
+            NexaState.EXECUTING -> "Executando no sistema."
+            NexaState.SPEAKING -> "NEXA está respondendo."
+            else -> if (enabled()) "Diga “NEXA” seguido do comando." else "Toque no núcleo para ativar a interface de voz."
+        }
         if (history.isNotEmpty()) transcript.text = history.takeLast(3).reversed().joinToString("\n") { "› " + it }
+        if (animatedState != currentState) {
+            animatedState = currentState
+            animateCore(currentState)
+        }
+    }
+
+    private fun animateCore(currentState: NexaState) {
+        coreAnimator?.cancel()
+        core.clearAnimation()
+        core.rotation = 0f
+        core.scaleX = 1f
+        core.scaleY = 1f
+        core.alpha = 1f
+
+        if (!enabled() || currentState == NexaState.OFF) return
+
+        val duration = when (currentState) {
+            NexaState.READY -> 1800L
+            NexaState.LISTENING -> 650L
+            NexaState.PROCESSING -> 850L
+            NexaState.EXECUTING -> 600L
+            NexaState.SPEAKING -> 500L
+            NexaState.OFF -> 0L
+        }
+        if (duration == 0L) return
+
+        coreAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            this.duration = duration
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            interpolator = LinearInterpolator()
+            addUpdateListener { animator ->
+                val phase = animator.animatedValue as Float
+                val wave = sin(phase * 2f * PI).toFloat()
+                when (currentState) {
+                    NexaState.READY -> {
+                        val scale = 0.985f + (wave + 1f) * 0.0075f
+                        core.scaleX = scale
+                        core.scaleY = scale
+                        core.alpha = 0.9f + (wave + 1f) * 0.05f
+                    }
+                    NexaState.LISTENING -> {
+                        val scale = 0.97f + (wave + 1f) * 0.02f
+                        core.scaleX = scale
+                        core.scaleY = scale
+                        core.alpha = 0.82f + (wave + 1f) * 0.09f
+                    }
+                    NexaState.PROCESSING -> {
+                        core.rotation = phase * 360f
+                        val scale = 0.975f + (wave + 1f) * 0.0175f
+                        core.scaleX = scale
+                        core.scaleY = scale
+                    }
+                    NexaState.EXECUTING -> {
+                        core.rotation = -phase * 360f
+                        val scale = 0.98f + (wave + 1f) * 0.025f
+                        core.scaleX = scale
+                        core.scaleY = scale
+                    }
+                    NexaState.SPEAKING -> {
+                        val scale = 0.97f + (wave + 1f) * 0.025f
+                        core.scaleX = scale
+                        core.scaleY = scale
+                        core.alpha = 0.9f + (wave + 1f) * 0.05f
+                    }
+                    NexaState.OFF -> Unit
+                }
+            }
+            start()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        coreAnimator?.cancel()
+        coreAnimator = null
+        super.onDetachedFromWindow()
     }
 
     fun addCommand(value: String) {
