@@ -67,6 +67,35 @@ private lateinit var gameModeView: GameModeView
 
     private var normalBrightness = -1
     private var sceneBrightnessApplied = false
+    private var sceneTools: LinearLayout? = null
+    private var studyTimerText: TextView? = null
+    private var studyTimerRunning = false
+    private var studyRemainingSeconds = 25 * 60
+    private var musicStatusText: TextView? = null
+    private var musicPlaying = false
+    private var musicPulse = 0
+    private val sceneToolsHandler = Handler(Looper.getMainLooper())
+    private val studyTimerTicker = object : Runnable {
+        override fun run() {
+            if (!studyTimerRunning) return
+            studyRemainingSeconds--
+            if (studyRemainingSeconds <= 0) {
+                studyRemainingSeconds = 0
+                studyTimerRunning = false
+                speak("Tempo de foco concluído.")
+            }
+            updateStudyTimerUi()
+            if (studyTimerRunning) sceneToolsHandler.postDelayed(this, 1000L)
+        }
+    }
+    private val musicPulseTicker = object : Runnable {
+        override fun run() {
+            if (!musicPlaying) return
+            musicPulse = (musicPulse + 1) % 8
+            updateMusicPulse()
+            sceneToolsHandler.postDelayed(this, 120L)
+        }
+    }
 
     private var speechRecognizer: SpeechRecognizer? = null
     private lateinit var speechIntent: Intent
@@ -350,6 +379,15 @@ private lateinit var gameModeView: GameModeView
             setMargins(0, 0, 0, dp(10))
         })
         buildQuickApps()
+
+        sceneTools = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
+        content.addView(sceneTools, LinearLayout.LayoutParams(-1, dp(96)).apply {
+            setMargins(0, 0, 0, dp(8))
+        })
+        buildSceneTools()
 
         val spacer = Space(this)
         content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
