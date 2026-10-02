@@ -419,12 +419,12 @@ class MainActivity : ComponentActivity() {
                 refreshHome()
                 if (!silent) nexa.speak("Foco reiniciado.")
             }
-            matchesAny(command, "ativar modo gaming", "ativa modo gaming", "modo gaming", "modo de gaming", "modo game", "modo gamer", "ativar gaming", "ativar game", "ativar gamer", "gaming", "game", "gamer") -> {
+            matchesAny(command, "ativar modo gaming", "ativa modo gaming", "ligar modo gaming", "liga modo gaming", "entrar no gaming", "entrar gaming", "modo gaming", "modo de gaming", "modo game", "modo gamer", "ativar gaming", "ativa gaming", "ligar gaming", "liga gaming", "ativar game", "ativa game", "ligar game", "liga game", "ativar gamer", "ativa gamer", "ligar gamer", "liga gamer", "gaming", "game", "gamer") -> {
                 if (applyScene("Gaming", true)) {
                     if (!silent) nexa.speak("Modo gaming ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo gaming.")
             }
-            matchesAny(command, "ativar modo musica", "ativa modo musica", "modo musica", "modo de musica", "ativar musica", "musica", "musical", "audio") -> {
+            matchesAny(command, "ativar modo musica", "ativa modo musica", "ligar modo musica", "liga modo musica", "entrar no modo musica", "entrar musica", "modo musica", "modo de musica", "ativar musica", "ativa musica", "ligar musica", "liga musica", "musica", "musical", "audio") -> {
                 if (applyScene("Música", true)) {
                     if (!silent) nexa.speak("Modo música ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo música.")
@@ -432,12 +432,12 @@ class MainActivity : ComponentActivity() {
             matchesAny(command, "abrir musica", "abrir player", "abrir spotify", "abrir youtube music") -> {
                 openMusicPlayer(silent)
             }
-            matchesAny(command, "ativar modo noite", "ativar modo noturno", "ativa modo noite", "modo noite", "modo noturno", "ativar noite", "noite", "noturno") -> {
+            matchesAny(command, "ativar modo noite", "ativar modo noturno", "ativa modo noite", "ativa modo noturno", "ligar modo noite", "liga modo noite", "entrar no modo noite", "entrar noite", "modo noite", "modo noturno", "ativar noite", "ativa noite", "ligar noite", "liga noite", "noite", "noturno") -> {
                 if (applyScene("Noite", true)) {
                     if (!silent) nexa.speak("Modo noite ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo noite.")
             }
-            matchesAny(command, "ativar modo normal", "ativa modo normal", "modo normal", "modo padrao", "voltar ao normal", "voltar pro normal", "normal", "padrao", "principal") -> {
+            matchesAny(command, "ativar modo normal", "ativa modo normal", "ligar modo normal", "liga modo normal", "voltar ao normal", "voltar pro normal", "entrar no modo normal", "modo normal", "modo padrao", "normal", "padrao", "principal") -> {
                 if (applyScene("Normal", true)) {
                     if (!silent) nexa.speak("Modo normal ativado.")
                 } else if (!silent) nexa.speak("Não consegui voltar ao modo normal.")
