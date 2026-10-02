@@ -159,7 +159,7 @@ class SceneModeView(
             setOnClickListener { action() }
         }
 
-    fun setScene(value: String, status: String, running: Boolean) {
+    fun setScene(value: String, status: String, running: Boolean, protocolStatus: String = "") {
         currentScene = value
         protocolArt.scene = value
         protocolArt.studyRunning = running
@@ -172,11 +172,12 @@ class SceneModeView(
         code.setTextColor(accent)
         primary.setTextColor(accent)
 
+        val protocolSuffix = if (protocolStatus.isBlank()) "" else "  •  $protocolStatus"
         when (value) {
             "Estudo" -> {
                 code.text = "SCENE 01  //  FOCUS ENGINE"
                 title.text = "FOCUS ENGINE"
-                subtitle.text = "Sessão de concentração com ciclo independente."
+                subtitle.text = "Sessão de concentração com ciclo independente.$protocolSuffix"
                 metric.text = status
                 metric.setTextColor(accent)
                 primary.text = if (running) "PAUSAR FOCO" else "INICIAR FOCO"
@@ -201,7 +202,7 @@ class SceneModeView(
             "Noite" -> {
                 code.text = "SCENE 03  //  NIGHT ENGINE"
                 title.text = "NIGHT LAYER"
-                subtitle.text = "Interface baixa, relógio noturno e filtro de luz quente."
+                subtitle.text = "Interface baixa, relógio noturno e filtro de luz quente.$protocolSuffix"
                 metric.text = if (nightClock) SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
                                else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                 metric.setTextColor(MiddesColors.night)
