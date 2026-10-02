@@ -296,27 +296,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNexaCommand(raw: String) {
-        val actions = command
-            .replace(Regex("\\s*,\\s*"), " e ")
-            .replace(Regex("\\s+e depois\\s+"), " e ")
-            .split(Regex("\\s+e\\s+"))
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-
-        if (actions.size > 1) {
-            actions.take(3).forEach { action ->
-                handleNexaCommand("nexa $action")
-            }
-            if (actions.size > 3) {
-                nexa.speak("Executei as três primeiras ações para manter o comando seguro.")
-            }
-            return
-        }
-
-        handleNexaSingleCommand(command)
-    }
-
-    private fun handleNexaSingleCommand(command: String) {
         val normalized = normalizeVoice(raw)
         val wake = listOf("nexa", "nessa").firstOrNull { normalized.contains(it) } ?: return
         var command = normalized.substringAfter(wake).trim().trim(',', '.', ':', ';')
@@ -335,110 +314,166 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        val actions = splitNexaChain(command)
+        if (actions.size > 1) {
+            executeNexaChain(actions)
+        } else {
+            handleNexaSingleCommand(command)
+        }
+    }
+
+    private fun splitNexaChain(command: String): List<String> {
+        val normalized = command
+            .replace(Regex("\\s+e depois\\s+"), " e ")
+            .replace(Regex("\\s*,\\s*"), " e ")
+        return normalized
+            .split(Regex("\\s+e\\s+"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .take(3)
+    }
+
+    private fun executeNexaChain(actions: List<String>) {
+        val results = mutableListOf<String>()
+        actions.forEach { action ->
+            results += executeNexaAction(action)
+        }
+
+        val successCount = results.count { it == "ok" }
+        when {
+            successCount == actions.size -> nexa.speak("Comando concluído.")
+            successCount > 0 -> nexa.speak("Executei parte do comando, mas não consegui concluir tudo.")
+            else -> nexa.speak("Não consegui executar o comando.")
+        }
+    }
+
+    private fun executeNexaAction(command: String): String {
+        return try {
+            handleNexaSingleCommand(command, silent = true)
+            "ok"
+        } catch (error: Exception) {
+            Log.e("NEXA", "Falha na ação: $command", error)
+            "error"
+        }
+    }
+
+    private fun handleNexaSingleCommand(command: String, silent: Boolean = false) {
         when {
             isSceneChangeRequest(command) -> {
                 val target = sceneFromCommand(command)
                 if (target == null) {
-                    nexa.speak("Qual modo você quer ativar?")
+                    if (!silent) nexa.speak("Qual modo você quer ativar?")
                 } else if (applyScene(target, true)) {
-                    nexa.speak(
-                        when (target) {
-                            "Estudo" -> "Modo estudo ativado."
-                            "Música" -> "Modo música ativado."
-                            "Noite" -> "Modo noite ativado."
-                            "Gaming" -> "Modo gaming ativado."
-                            else -> "Modo normal ativado."
-                        }
-                    )
-                } else {
+                    if (!silent) {
+                        nexa.speak(
+                            when (target) {
+                                "Estudo" -> "Modo estudo ativado."
+                                "Música" -> "Modo música ativado."
+                                "Noite" -> "Modo noite ativado."
+                                "Gaming" -> "Modo gaming ativado."
+                                else -> "Modo normal ativado."
+                            }
+                        )
+                    }
+                } else if (!silent) {
                     nexa.speak("Não consegui ativar esse modo.")
                 }
             }
             matchesAny(command, "ativar modo estudo", "ativa modo estudo", "modo estudo", "modo de estudo", "ativar estudo", "estudo", "estudar", "estudio") -> {
-                if (applyScene("Estudo", true)) nexa.speak("Modo estudo ativado.")
-                else nexa.speak("Não consegui ativar o modo estudo.")
+                if (applyScene("Estudo", true)) {
+                    if (!silent) nexa.speak("Modo estudo ativado.")
+                } else if (!silent) nexa.speak("Não consegui ativar o modo estudo.")
             }
             matchesAny(command, "iniciar foco", "inicia foco", "comecar foco", "comeca foco", "continuar foco") -> {
-                if (store.scene != "Estudo") applyScene("Estudo", true)
+                if (store.scene != "Estudo" && !applyScene("Estudo", true)) {
+                    if (!silent) nexa.speak("Não consegui abrir o modo estudo.")
+                    return
+                }
                 startStudy()
-                nexa.speak("Foco iniciado.")
+                if (!silent) nexa.speak("Foco iniciado.")
             }
             matchesAny(command, "pausar foco", "pausa foco") -> {
                 studyRunning = false
                 handler.removeCallbacks(studyTicker)
                 refreshHome()
-                nexa.speak("Foco pausado.")
+                if (!silent) nexa.speak("Foco pausado.")
             }
             matchesAny(command, "resetar foco", "resetar estudo", "reiniciar foco") -> {
                 studyRunning = false
                 handler.removeCallbacks(studyTicker)
                 studyRemainingSeconds = 25 * 60
                 refreshHome()
-                nexa.speak("Foco reiniciado.")
+                if (!silent) nexa.speak("Foco reiniciado.")
             }
             matchesAny(command, "ativar modo gaming", "ativa modo gaming", "modo gaming", "modo de gaming", "modo game", "modo gamer", "ativar gaming", "ativar game", "ativar gamer", "gaming", "game", "gamer") -> {
-                if (applyScene("Gaming", true)) nexa.speak("Modo gaming ativado.")
-                else nexa.speak("Não consegui ativar o modo gaming.")
+                if (applyScene("Gaming", true)) {
+                    if (!silent) nexa.speak("Modo gaming ativado.")
+                } else if (!silent) nexa.speak("Não consegui ativar o modo gaming.")
             }
             matchesAny(command, "ativar modo musica", "ativa modo musica", "modo musica", "modo de musica", "ativar musica", "musica", "musical", "audio") -> {
-                if (applyScene("Música", true)) nexa.speak("Modo música ativado.")
-                else nexa.speak("Não consegui ativar o modo música.")
+                if (applyScene("Música", true)) {
+                    if (!silent) nexa.speak("Modo música ativado.")
+                } else if (!silent) nexa.speak("Não consegui ativar o modo música.")
             }
-            matchesAny(command, "abrir musica", "abrir player", "abrir spotify", "abrir youtube music") -> openMusicPlayer()
+            matchesAny(command, "abrir musica", "abrir player", "abrir spotify", "abrir youtube music") -> {
+                openMusicPlayer(silent)
+            }
             matchesAny(command, "ativar modo noite", "ativar modo noturno", "ativa modo noite", "modo noite", "modo noturno", "ativar noite", "noite", "noturno") -> {
-                if (applyScene("Noite", true)) nexa.speak("Modo noite ativado.")
-                else nexa.speak("Não consegui ativar o modo noite.")
+                if (applyScene("Noite", true)) {
+                    if (!silent) nexa.speak("Modo noite ativado.")
+                } else if (!silent) nexa.speak("Não consegui ativar o modo noite.")
             }
             matchesAny(command, "ativar modo normal", "ativa modo normal", "modo normal", "modo padrao", "voltar ao normal", "voltar pro normal", "normal", "padrao", "principal") -> {
-                if (applyScene("Normal", true)) nexa.speak("Modo normal ativado.")
-                else nexa.speak("Não consegui voltar ao modo normal.")
+                if (applyScene("Normal", true)) {
+                    if (!silent) nexa.speak("Modo normal ativado.")
+                } else if (!silent) nexa.speak("Não consegui voltar ao modo normal.")
             }
             matchesAny(command, "ativar flow", "ativa flow", "abrir flow", "abrir middes flow", "modo flow") -> {
                 showFlow()
-                nexa.speak("Flow ativado.")
+                if (!silent) nexa.speak("Flow ativado.")
             }
             matchesAny(command, "abrir nexa", "mostrar nexa", "abrir assistente", "abrir nucleo", "mostrar nucleo") -> {
                 showNexa()
-                nexa.speak("Núcleo NEXA aberto.")
+                if (!silent) nexa.speak("Núcleo NEXA aberto.")
             }
             matchesAny(command, "abrir cenas", "abrir cena", "mostrar cenas", "escolher cena") -> {
                 applyScene("Normal", true)
-                nexa.speak("Use comandos como modo estudo, modo música, modo noite ou modo gaming.")
+                if (!silent) nexa.speak("Use comandos como modo estudo, modo música, modo noite ou modo gaming.")
             }
             matchesAny(command, "abrir whatsapp", "abrir whats", "abrir zap", "abrir wpp", "abre whatsapp", "abre zap", "abra whatsapp", "abra zap") ->
-                openVoiceApp("com.whatsapp", "WhatsApp")
+                openVoiceApp("com.whatsapp", "WhatsApp", silent)
             matchesAny(command, "abrir youtube", "abre youtube", "abra youtube") ->
-                openVoiceApp("com.google.android.youtube", "YouTube")
+                openVoiceApp("com.google.android.youtube", "YouTube", silent)
             matchesAny(command, "abrir chrome", "abrir navegador", "abre chrome", "abre navegador", "abra chrome", "abra navegador") ->
-                openVoiceApp("com.android.chrome", "Chrome")
-            matchesAny(command, "abrir telefone", "abrir telefone", "abrir discador", "abrir chamadas", "abrir ligacoes", "abrir ligação", "telefone", "discador") ->
-                openSystemApp(Intent(Intent.ACTION_DIAL), "o telefone")
-            matchesAny(command, "abrir camera", "abrir câmera", "abrir camera", "camera", "câmera") ->
-                openSystemApp(Intent(MediaStoreIntent.ACTION_IMAGE_CAPTURE), "a câmera")
+                openVoiceApp("com.android.chrome", "Chrome", silent)
+            matchesAny(command, "abrir telefone", "abrir discador", "abrir chamadas", "abrir ligacoes", "abrir ligação", "telefone", "discador") ->
+                openSystemApp(Intent(Intent.ACTION_DIAL), "o telefone", silent)
+            matchesAny(command, "abrir camera", "abrir câmera", "camera", "câmera") ->
+                openSystemApp(Intent(MediaStoreIntent.ACTION_IMAGE_CAPTURE), "a câmera", silent)
             matchesAny(command, "abrir galeria", "abrir fotos", "abrir imagens", "fotos", "galeria") ->
-                openSystemApp(Intent(Intent.ACTION_VIEW).apply { type = "image/*" }, "a galeria")
+                openSystemApp(Intent(Intent.ACTION_VIEW).apply { type = "image/*" }, "a galeria", silent)
             matchesAny(command, "abrir arquivos", "abrir gerenciador", "abrir documentos", "meus arquivos", "arquivos") ->
-                openSystemApp(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE) }, "os arquivos")
+                openSystemApp(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE) }, "os arquivos", silent)
             matchesAny(command, "abrir notificacoes", "abrir notificações", "notificacoes", "notificações") -> {
-                openAndroidSettingsPage("android.settings.NOTIFICATION_SETTINGS", "as configurações de notificações")
+                openAndroidSettingsPage("android.settings.NOTIFICATION_SETTINGS", "as configurações de notificações", silent)
             }
             matchesAny(command, "abrir bluetooth", "bluetooth") -> {
-                openAndroidSettingsPage(Settings.ACTION_BLUETOOTH_SETTINGS, "as configurações de Bluetooth")
+                openAndroidSettingsPage(Settings.ACTION_BLUETOOTH_SETTINGS, "as configurações de Bluetooth", silent)
             }
             matchesAny(command, "abrir wifi", "wi fi", "wifi") -> {
-                openAndroidSettingsPage(Settings.ACTION_WIFI_SETTINGS, "as configurações de Wi-Fi")
+                openAndroidSettingsPage(Settings.ACTION_WIFI_SETTINGS, "as configurações de Wi-Fi", silent)
             }
             matchesAny(command, "abrir configuracoes", "abrir configuracao", "abre configuracoes", "abra configuracoes") -> {
-                openAndroidSettings()
-                nexa.speak("Abrindo as configurações.")
+                openAndroidSettings(silent)
+                if (!silent) nexa.speak("Abrindo as configurações.")
             }
             matchesAny(command, "abrir aplicativos", "abrir apps", "gaveta", "lista de aplicativos", "abrir lista") -> {
                 showDrawer(false)
-                nexa.speak("Abrindo os aplicativos.")
+                if (!silent) nexa.speak("Abrindo os aplicativos.")
             }
             matchesAny(command, "voltar", "tela inicial", "inicio", "home") -> {
                 if (store.scene == "Gaming") applyScene("Normal", true) else showHome()
-                nexa.speak("Voltando para a tela inicial.")
+                if (!silent) nexa.speak("Voltando para a tela inicial.")
             }
             command.startsWith("abrir ") || command.startsWith("abre ") || command.startsWith("abra ") ||
                 command.startsWith("iniciar ") || command.startsWith("inicia ") || command.startsWith("inicie ") -> {
@@ -446,9 +481,12 @@ class MainActivity : ComponentActivity() {
                     .removePrefix("abrir ").removePrefix("abre ").removePrefix("abra ")
                     .removePrefix("iniciar ").removePrefix("inicia ").removePrefix("inicie ")
                     .removePrefix("aplicativo ").removePrefix("app ").trim()
-                openInstalledAppByName(appName)
+                openInstalledAppByName(appName, silent)
             }
-            else -> nexa.speak("Não reconheci esse comando.")
+            else -> {
+                if (!silent) nexa.speak("Não reconheci esse comando.")
+                throw IllegalArgumentException("Comando não reconhecido: $command")
+            }
         }
     }
 
@@ -480,7 +518,7 @@ class MainActivity : ComponentActivity() {
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 
-    private fun openMusicPlayer() {
+    private fun openMusicPlayer(silent: Boolean = false) {
         val packageName = repo.firstInstalled(sceneDefaults("Música") + listOf(
             "com.spotify.music",
             "com.google.android.apps.youtube.music",
@@ -488,65 +526,65 @@ class MainActivity : ComponentActivity() {
         )).firstOrNull()
         if (packageName != null && repo.launch(packageName)) {
             store.recordLaunch(packageName)
-            nexa.speak("Abrindo o player.")
+            if (!silent) nexa.speak("Abrindo o player.")
         } else {
             showDrawer(true)
-            nexa.speak("Não encontrei um aplicativo de música.")
+            if (!silent) nexa.speak("Não encontrei um aplicativo de música.")
         }
     }
 
-    private fun openVoiceApp(packageName: String, label: String) {
+    private fun openVoiceApp(packageName: String, label: String, silent: Boolean = false) {
         if (repo.icon(packageName) != null) {
-            nexa.speak("Abrindo $label.")
+            if (!silent) nexa.speak("Abrindo $label.")
             handler.postDelayed({
                 if (repo.launch(packageName)) store.recordLaunch(packageName)
             }, 280L)
         } else {
-            nexa.speak("O $label não está instalado.")
+            if (!silent) nexa.speak("O $label não está instalado.")
         }
     }
 
-    private fun openInstalledAppByName(name: String) {
+    private fun openInstalledAppByName(name: String, silent: Boolean = false) {
         val app = repo.findBySpokenName(name)
         if (app == null) {
-            nexa.speak("Não encontrei esse aplicativo.")
+            if (!silent) nexa.speak("Não encontrei esse aplicativo.")
             return
         }
         if (repo.icon(app.packageName) != null) {
-            nexa.speak("Abrindo " + app.label + ".")
+            if (!silent) nexa.speak("Abrindo " + app.label + ".")
             handler.postDelayed({
                 if (repo.launch(app.packageName)) store.recordLaunch(app.packageName)
             }, 280L)
         } else {
-            nexa.speak("Não consegui abrir " + app.label + ".")
+            if (!silent) nexa.speak("Não consegui abrir " + app.label + ".")
         }
     }
 
-    private fun openSystemApp(intent: Intent, label: String) {
+    private fun openSystemApp(intent: Intent, label: String, silent: Boolean = false) {
         try {
             if (intent.resolveActivity(packageManager) == null) {
-                nexa.speak("Não encontrei $label neste aparelho.")
+                if (!silent) nexa.speak("Não encontrei $label neste aparelho.")
                 return
             }
-            nexa.speak("Abrindo $label.")
+            if (!silent) nexa.speak("Abrindo $label.")
             handler.postDelayed({
                 try {
                     startActivity(intent)
                 } catch (_: Exception) {
-                    nexa.speak("Não consegui abrir $label.")
+                    if (!silent) nexa.speak("Não consegui abrir $label.")
                 }
             }, 220L)
         } catch (_: Exception) {
-            nexa.speak("Não consegui abrir $label.")
+            if (!silent) nexa.speak("Não consegui abrir $label.")
         }
     }
 
-    private fun openAndroidSettingsPage(action: String, label: String) {
+    private fun openAndroidSettingsPage(action: String, label: String, silent: Boolean = false) {
         try {
             startActivity(Intent(action))
-            nexa.speak("Abrindo $label.")
+            if (!silent) nexa.speak("Abrindo $label.")
         } catch (_: Exception) {
-            nexa.speak("Não consegui abrir $label.")
+            if (!silent) nexa.speak("Não consegui abrir $label.")
         }
     }
 
@@ -857,7 +895,7 @@ class MainActivity : ComponentActivity() {
 
     private fun buildGameApps(): List<String> = sceneDefaults("Gaming").take(8)
 
-    private fun openAndroidSettings() {
+    private fun openAndroidSettings(silent: Boolean = false) {
         try {
             startActivity(Intent(Settings.ACTION_SETTINGS))
         } catch (_: Exception) {
