@@ -20,12 +20,14 @@ class HomeView(
     private val onOpenFlow: () -> Unit,
     private val onOpenNexa: () -> Unit,
     private val onScenePicker: () -> Unit,
-    private val onLaunchApp: (String) -> Unit,
+    private val onSceneAction: () -> Unit,
     private val appLabel: (String) -> String?,
     private val appIcon: (String) -> Drawable?,
     private val favoritePackages: () -> List<String>,
     private val scenePackages: (String) -> List<String>,
-    private val nexaState: () -> NexaState
+    private val nexaState: () -> NexaState,
+    private val studyStatus: () -> String,
+    private val studyRunning: () -> Boolean
 ) : FrameLayout(context) {
 
     private val clock = MiddesUi.text(context, "", 68f, MiddesColors.white)
@@ -34,9 +36,8 @@ class HomeView(
     private val sceneChip = MiddesUi.text(context, "NORMAL", 9f, MiddesColors.purpleBright, true)
     private val sceneTitle = MiddesUi.text(context, "", 20f, MiddesColors.white, true)
     private val sceneSubtitle = MiddesUi.text(context, "", 11f, MiddesColors.muted)
-    private val quickApps = LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-    }
+    private val sceneAction = MiddesUi.text(context, "FLOW", 9f, MiddesColors.purpleBright, true)
+    private val quickApps = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
     private val nexaBadge = MiddesUi.text(context, "NEXA • DESLIGADA", 8.5f, MiddesColors.muted, true)
     private val content = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -93,7 +94,7 @@ class HomeView(
 
         val contextCard = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(MiddesUi.dp(context, 18f), MiddesUi.dp(context, 16f), MiddesUi.dp(context, 18f), MiddesUi.dp(context, 16f))
+            setPadding(MiddesUi.dp(context, 18f), MiddesUi.dp(context, 16f), MiddesUi.dp(context, 18f), MiddesUi.dp(context, 14f))
             background = MiddesUi.rounded(context, Color.argb(214, 13, 11, 19), 28f)
         }
         val line = LinearLayout(context).apply { gravity = android.view.Gravity.CENTER_VERTICAL }
@@ -108,8 +109,17 @@ class HomeView(
         contextCard.addView(sceneTitle, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 30f)).apply {
             setMargins(0, MiddesUi.dp(context, 4f), 0, 0)
         })
-        contextCard.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 38f)))
-        content.addView(contextCard, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 124f)).apply {
+        contextCard.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 35f)))
+        sceneAction.apply {
+            gravity = android.view.Gravity.CENTER
+            background = MiddesUi.rounded(context, Color.argb(55, 190, 132, 250), 14f)
+            setOnClickListener { onSceneAction() }
+        }
+        contextCard.addView(sceneAction, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 34f)).apply {
+            setMargins(0, MiddesUi.dp(context, 6f), 0, 0)
+        })
+
+        content.addView(contextCard, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 154f)).apply {
             setMargins(0, MiddesUi.dp(context, 12f), 0, MiddesUi.dp(context, 12f))
         })
 
@@ -156,11 +166,28 @@ class HomeView(
     fun refresh(scene: String, batteryPercent: Int) {
         val info = SceneManager.description(scene, Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
         sceneTitle.text = info.first
-        sceneSubtitle.text = info.second
+        val subtitleBase = info.second
+        sceneSubtitle.text = if (scene == "Estudo") {
+            subtitleBase + "  " + studyStatus()
+        } else subtitleBase
+
         sceneChip.text = scene.uppercase(Locale("pt", "BR"))
         val accent = SceneManager.accent(scene)
         sceneChip.setTextColor(accent)
         sceneChip.background = MiddesUi.rounded(context, Color.argb(62, Color.red(accent), Color.green(accent), Color.blue(accent)), 12f)
+
+        sceneAction.visibility = if (scene == "Estudo" || scene == "Música") View.VISIBLE else View.GONE
+        sceneAction.text = when (scene) {
+            "Estudo" -> if (studyRunning()) "PAUSAR FOCO • " + studyStatus() else "INICIAR FOCO • " + studyStatus()
+            "Música" -> "ABRIR PLAYER"
+            else -> ""
+        }
+        sceneAction.setTextColor(accent)
+        sceneAction.background = MiddesUi.rounded(
+            context,
+            Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent)),
+            14f
+        )
 
         clock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
         date.text = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR")).format(Date())
@@ -172,6 +199,7 @@ class HomeView(
             NexaState.READY -> "NEXA pronta."
             NexaState.OFF -> "Seu launcher, do seu jeito."
         }
+
         findViewWithTag<TextView>("battery")?.text = if (batteryPercent >= 0) "$batteryPercent%" else "—"
         nexaBadge.text = when (nexaState()) {
             NexaState.OFF -> "NEXA • DESLIGADA"
@@ -235,7 +263,8 @@ class HomeView(
                 if (swipeTriggered) return true
                 val dx = event.rawX - downX
                 val dy = event.rawY - downY
-                if (kotlin.math.abs(dy) > threshold && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.15f &&
+                if (kotlin.math.abs(dy) > threshold &&
+                    kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.15f &&
                     kotlin.math.abs(dy) > touchSlop
                 ) {
                     swipeTriggered = true
