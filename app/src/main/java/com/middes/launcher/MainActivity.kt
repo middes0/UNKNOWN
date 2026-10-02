@@ -39,6 +39,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var store: LauncherStore
     private lateinit var repo: AppRepository
     private lateinit var nexa: NexaController
+    private lateinit var protocolController: SceneProtocolController
+    private var dndPromptShown = false
 
     private val handler = Handler(Looper.getMainLooper())
     private var screen = Screen.HOME
@@ -105,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
         store = LauncherStore(this)
         repo = AppRepository(this)
+        protocolController = SceneProtocolController(this, window)
         if (store.scene == "Gaming") store.scene = "Normal"
 
         setupNexa()
@@ -114,7 +117,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         applyWallpaper()
-        SceneManager.applySystem(this, window, store.scene)
+        val protocolResult = protocolController.applyScene(store.scene)
+        if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS) {
+            showDndAccessDialog()
+        }
+        if (::settingsView.isInitialized) settingsView.rebuild()
         nexa.onResume()
         handler.removeCallbacks(clockTicker)
         handler.post(clockTicker)
@@ -229,7 +236,9 @@ class MainActivity : ComponentActivity() {
             onToggleNexa = { toggleNexa() },
             nexaEnabled = { store.nexaEnabled },
             onAndroidSettings = { openAndroidSettings() },
-            onMicrophoneSettings = { openMicrophoneSettings() }
+            onMicrophoneSettings = { openMicrophoneSettings() },
+            dndStatus = { protocolController.dndDescription() },
+            onOpenDndSettings = { protocolController.openDndSettings() }
         )
         root.addView(settingsView, FrameLayout.LayoutParams(-1, -1))
 
@@ -412,7 +421,7 @@ class MainActivity : ComponentActivity() {
                 val target = sceneFromCommand(command)
                 if (target == null) {
                     if (!silent) nexa.speak("Qual modo você quer ativar?")
-                } else if (applyScene(target, true)) {
+                } else if (applyScene(target, true, !silent)) {
                     if (!silent) {
                         nexa.speak(
                             when (target) {
@@ -429,12 +438,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
             matchesAny(command, "ativar modo estudo", "ativa modo estudo", "modo estudo", "modo de estudo", "ativar estudo", "estudo", "estudar", "estudio") -> {
-                if (applyScene("Estudo", true)) {
+                if (applyScene("Estudo", true, !silent)) {
                     if (!silent) nexa.speak("Modo estudo ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo estudo.")
             }
             matchesAny(command, "iniciar foco", "inicia foco", "ligar foco", "liga foco", "ativar foco", "ativa foco", "comecar foco", "comeca foco", "continuar foco") -> {
-                if (store.scene != "Estudo" && !applyScene("Estudo", true)) {
+                if (store.scene != "Estudo" && !applyScene("Estudo", true, !silent)) {
                     if (!silent) nexa.speak("Não consegui abrir o modo estudo.")
                     return
                 }
@@ -447,6 +456,21 @@ class MainActivity : ComponentActivity() {
                 refreshHome()
                 if (!silent) nexa.speak("Foco pausado.")
             }
+            matchesAny(command, "quanto falta", "tempo restante", "quanto tempo falta", "quanto falta para terminar o foco") -> {
+                val remaining = formatStudyTime()
+                if (!silent) {
+                    if (store.scene == "Estudo") {
+                        nexa.speak("Restam $remaining.")
+                    } else {
+                        nexa.speak("O modo estudo não está ativo.")
+                    }
+                }
+            }
+            matchesAny(command, "encerrar estudo", "encerrar modo estudo", "sair do estudo", "sair do modo estudo", "finalizar estudo") -> {
+                if (applyScene("Normal", true, !silent) && !silent) {
+                    nexa.speak("Modo estudo encerrado.")
+                }
+            }
             matchesAny(command, "resetar foco", "resetar estudo", "reiniciar foco") -> {
                 studyRunning = false
                 handler.removeCallbacks(studyTicker)
@@ -455,12 +479,12 @@ class MainActivity : ComponentActivity() {
                 if (!silent) nexa.speak("Foco reiniciado.")
             }
             matchesAny(command, "ativar modo gaming", "ativa modo gaming", "ligar modo gaming", "liga modo gaming", "entrar no gaming", "entrar gaming", "modo gaming", "modo de gaming", "modo game", "modo gamer", "ativar gaming", "ativa gaming", "ligar gaming", "liga gaming", "ativar game", "ativa game", "ligar game", "liga game", "ativar gamer", "ativa gamer", "ligar gamer", "liga gamer", "gaming", "game", "gamer") -> {
-                if (applyScene("Gaming", true)) {
+                if (applyScene("Gaming", true, !silent)) {
                     if (!silent) nexa.speak("Modo gaming ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo gaming.")
             }
             matchesAny(command, "ativar modo musica", "ativa modo musica", "ligar modo musica", "liga modo musica", "entrar no modo musica", "entrar musica", "modo musica", "modo de musica", "ativar musica", "ativa musica", "ligar musica", "liga musica", "musica", "musical", "audio") -> {
-                if (applyScene("Música", true)) {
+                if (applyScene("Música", true, !silent)) {
                     if (!silent) nexa.speak("Modo música ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo música.")
             }
@@ -468,12 +492,12 @@ class MainActivity : ComponentActivity() {
                 openMusicPlayer(silent)
             }
             matchesAny(command, "ativar modo noite", "ativar modo noturno", "ativa modo noite", "ativa modo noturno", "ligar modo noite", "liga modo noite", "entrar no modo noite", "entrar noite", "modo noite", "modo noturno", "ativar noite", "ativa noite", "ligar noite", "liga noite", "noite", "noturno") -> {
-                if (applyScene("Noite", true)) {
+                if (applyScene("Noite", true, !silent)) {
                     if (!silent) nexa.speak("Modo noite ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo noite.")
             }
             matchesAny(command, "ativar modo normal", "ativa modo normal", "ligar modo normal", "liga modo normal", "voltar ao normal", "voltar pro normal", "entrar no modo normal", "modo normal", "modo padrao", "normal", "padrao", "principal") -> {
-                if (applyScene("Normal", true)) {
+                if (applyScene("Normal", true, !silent)) {
                     if (!silent) nexa.speak("Modo normal ativado.")
                 } else if (!silent) nexa.speak("Não consegui voltar ao modo normal.")
             }
@@ -517,6 +541,10 @@ class MainActivity : ComponentActivity() {
                 openSystemApp(Intent("android.intent.action.SHOW_ALARMS"), "o relógio", silent)
             matchesAny(command, "abrir configuracoes de aplicativos", "abrir gerenciamento de aplicativos", "gerenciar aplicativos") ->
                 openAndroidSettingsPage(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS, "o gerenciamento de aplicativos", silent)
+            matchesAny(command, "abrir acesso nao perturbe", "abrir acesso não perturbe", "permitir nao perturbe", "permitir não perturbe", "acesso nao perturbe") -> {
+                protocolController.openDndSettings()
+                if (!silent) nexa.speak("Abrindo o acesso do Não perturbe.")
+            }
             matchesAny(command, "abrir notificacoes", "abrir notificações", "notificacoes", "notificações") -> {
                 openAndroidSettingsPage("android.settings.NOTIFICATION_SETTINGS", "as configurações de notificações", silent)
             }
@@ -815,6 +843,7 @@ class MainActivity : ComponentActivity() {
         screen = Screen.HOME
         if (::gameView.isInitialized) gameView.stop()
         if (::flowView.isInitialized) flowView.stop()
+        protocolController.applyScene("Normal")
         if (::hudView.isInitialized) hudView.setMode("Normal")
         setScreenVisibility(screen)
         refreshHome()
@@ -841,7 +870,7 @@ class MainActivity : ComponentActivity() {
         if (::gameView.isInitialized) gameView.stop()
         if (store.scene == "Gaming") {
             store.scene = "Normal"
-            SceneManager.applySystem(this, window, "Normal")
+            protocolController.applyScene("Normal")
         }
         flowView.setApps(buildFlowApps().map { it to repo.icon(it) })
         screen = Screen.FLOW
@@ -861,7 +890,7 @@ class MainActivity : ComponentActivity() {
         if (active != Screen.GAME) gameView.stop()
     }
 
-    private fun applyScene(scene: String, save: Boolean): Boolean {
+    private fun applyScene(scene: String, save: Boolean, promptDnd: Boolean = true): Boolean {
         if (scene !in SceneManager.scenes) return false
 
         return try {
@@ -872,7 +901,10 @@ class MainActivity : ComponentActivity() {
                 handler.removeCallbacks(studyTicker)
             }
 
-            SceneManager.applySystem(this, window, scene)
+            val protocolResult = protocolController.applyScene(scene)
+            if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS && promptDnd) {
+                showDndAccessDialog()
+            }
 
             when (scene) {
                 "Gaming" -> {
@@ -888,7 +920,7 @@ class MainActivity : ComponentActivity() {
                 else -> {
                     screen = Screen.SCENE
                     setScreenVisibility(screen)
-                    sceneView.setScene(scene, formatStudyTime(), studyRunning)
+                    sceneView.setScene(scene, formatStudyTime(), studyRunning, protocolStatus(scene))
                 }
             }
             true
@@ -898,9 +930,34 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun protocolStatus(scene: String): String =
+        if (scene == "Estudo" || scene == "Noite" || scene == "Gaming") {
+            protocolController.dndDescription()
+        } else {
+            ""
+        }
+
+    private fun showDndAccessDialog() {
+        if (dndPromptShown || protocolController.hasDndAccess() || isFinishing) return
+        dndPromptShown = true
+
+        AlertDialog.Builder(this)
+            .setTitle("Proteção do protocolo")
+            .setMessage(
+                "Estudo, Noite e Gaming podem silenciar os alertas do celular enquanto estão ativos. " +
+                    "O Android exige que você autorize o MIDDES em Não perturbe. " +
+                    "As notificações não são apagadas; os alertas são silenciados."
+            )
+            .setPositiveButton("Ativar acesso") { _, _ ->
+                protocolController.openDndSettings()
+            }
+            .setNegativeButton("Agora não", null)
+            .show()
+    }
+
     private fun refreshSceneView() {
         if (::sceneView.isInitialized && screen == Screen.SCENE) {
-            sceneView.setScene(store.scene, formatStudyTime(), studyRunning)
+            sceneView.setScene(store.scene, formatStudyTime(), studyRunning, protocolStatus(store.scene))
         }
     }
 
