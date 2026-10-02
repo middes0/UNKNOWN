@@ -398,7 +398,7 @@ class MainActivity : ComponentActivity() {
                     if (!silent) nexa.speak("Modo estudo ativado.")
                 } else if (!silent) nexa.speak("Não consegui ativar o modo estudo.")
             }
-            matchesAny(command, "iniciar foco", "inicia foco", "comecar foco", "comeca foco", "continuar foco") -> {
+            matchesAny(command, "iniciar foco", "inicia foco", "ligar foco", "liga foco", "ativar foco", "ativa foco", "comecar foco", "comeca foco", "continuar foco") -> {
                 if (store.scene != "Estudo" && !applyScene("Estudo", true)) {
                     if (!silent) nexa.speak("Não consegui abrir o modo estudo.")
                     return
