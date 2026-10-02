@@ -263,37 +263,60 @@ private lateinit var gameModeView: GameModeView
             background = rounded(panelStrong, 24f)
         }
 
-        val summaryTitle = textView("SEU RESUMO", 10f, muted, true).apply {
-            letterSpacing = 0.12f
+        val summaryTitle = textView("SEU RESUMO", 9f, muted, true).apply {
+            letterSpacing = 0.16f
         }
-        summary.addView(summaryTitle, LinearLayout.LayoutParams(-1, dp(20)))
+        summary.tag = "scene-summary"
 
-        greetingText = textView("", 17f, white, true)
-        summary.addView(greetingText, LinearLayout.LayoutParams(-1, dp(28)))
+        val sceneValue = textView("NORMAL", 9f, purpleBright, true).apply {
+            tag = "scene-value"
+            letterSpacing = 0.16f
+        }
+        summary.addView(sceneValue, LinearLayout.LayoutParams(-1, dp(18)))
 
-        val summaryLine = textView(
-            "Acesso rápido aos seus apps, cenas e espaço de trabalho.",
-            11f, gray
-        )
-        summary.addView(summaryLine, LinearLayout.LayoutParams(-1, dp(26)))
+        val sceneTitle = textView("Tudo pronto para você.", 17f, white, true).apply {
+            tag = "scene-title"
+        }
+        summary.addView(sceneTitle, LinearLayout.LayoutParams(-1, dp(28)))
 
-        content.addView(summary, LinearLayout.LayoutParams(-1, dp(88)).apply {
+        val sceneSubtitle = textView(
+            "Acesso rápido aos seus aplicativos e ao assistente.",
+            10.5f, gray
+        ).apply {
+            tag = "scene-subtitle"
+            maxLines = 2
+        }
+        summary.addView(sceneSubtitle, LinearLayout.LayoutParams(-1, dp(34)))
+
+        content.addView(summary, LinearLayout.LayoutParams(-1, dp(112)).apply {
             setMargins(0, dp(12), 0, dp(12))
         })
+        val sceneHint = textView(
+            when (currentScene) {
+                "Estudo" -> "25 MIN  •  CONCENTRAÇÃO"
+                "Música" -> "♫  REPRODUÇÃO  •  SEU AMBIENTE MUSICAL"
+                "Noite" -> "OLED  •  LUZ REDUZIDA"
+                else -> "MIDDES  •  ASSISTENTE NEXA"
+            },
+            9f, muted, true
+        ).apply { letterSpacing = 0.08f }
+        content.addView(sceneHint, LinearLayout.LayoutParams(-1, dp(18)).apply {
+            setMargins(dp(2), 0, dp(2), dp(10))
+        })
 
-        val sceneLabel = textView("CENA ATUAL", 10f, muted, true).apply {
-            letterSpacing = 0.12f
+
+        val sceneLabel = textView("AMBIENTE  •  CONTROLADO PELA NEXA", 8.5f, muted, true).apply {
+            letterSpacing = 0.10f
         }
-        content.addView(sceneLabel, LinearLayout.LayoutParams(-1, dp(20)))
+        content.addView(sceneLabel, LinearLayout.LayoutParams(-1, dp(18)))
 
         sceneStrip = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            alpha = 0f
+            visibility = View.GONE
         }
-        content.addView(sceneStrip, LinearLayout.LayoutParams(-1, dp(52)).apply {
-            setMargins(0, dp(3), 0, dp(10))
-        })
-        buildSceneButtons()
+        content.addView(sceneStrip, LinearLayout.LayoutParams(1, 1))
 
         val spacer = Space(this)
         content.addView(spacer, LinearLayout.LayoutParams(1, 0, 1f))
@@ -319,7 +342,7 @@ private lateinit var gameModeView: GameModeView
 
     private fun buildSceneButtons() {
         sceneStrip.removeAllViews()
-        listOf("Normal", "Gaming", "Estudo", "Trabalho", "Noite").forEach { scene ->
+        listOf("Normal", "Gaming", "Estudo", "Música", "Noite").forEach { scene ->
             val b = textView(scene, 10.5f, gray, true).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(10), 0, dp(10), 0)
@@ -385,7 +408,7 @@ private lateinit var gameModeView: GameModeView
     }
 
     private fun showSceneAppsChooser() {
-        val scenes = arrayOf("Normal", "Gaming", "Estudo", "Trabalho", "Noite")
+        val scenes = arrayOf("Normal", "Gaming", "Estudo", "Música", "Noite")
         val sceneLabels = scenes.map { scene ->
             val count = getSceneAppPackages(scene, emptyList()).size
             if (prefs.contains(sceneAppsKey(scene))) "$scene ($count apps)" else "$scene (padrão)"
@@ -625,7 +648,7 @@ private lateinit var gameModeView: GameModeView
         }
 
         settingsRow(list, "Papel de parede", "Escolher uma imagem da galeria") { chooseWallpaper() }
-        settingsRow(list, "Cena", "Normal, Gaming, Estudo, Trabalho ou Noite") { showSceneChooser() }
+        settingsRow(list, "Cena", "Normal, Gaming, Estudo, Música ou Noite") { showSceneChooser() }
         settingsRow(list, "Aplicativos das cenas", "Escolha quais apps aparecem em cada modo") { showSceneAppsChooser() }
         settingsRow(list, "My Desk", "Central de atalhos e informações") { openDesk() }
         settingsRow(list, "Aplicativos", "Abrir a gaveta e pesquisar apps") { openDrawer() }
@@ -840,15 +863,15 @@ private lateinit var gameModeView: GameModeView
                 applyScene("Gaming", true)
                 speak("Modo gaming ativado.")
             }
-            command.contains("modo trabalho") ||
-                command.contains("modo de trabalho") ||
-                command.contains("ativar modo trabalho") ||
-                command.contains("ativa modo trabalho") ||
-                command.contains("ativar trabalho") ||
-                command.contains("ativa trabalho") ||
-                command == "trabalho" -> {
-                applyScene("Trabalho", true)
-                speak("Modo trabalho ativado.")
+            command.contains("modo musica") ||
+                command.contains("modo de musica") ||
+                command.contains("ativar modo musica") ||
+                command.contains("ativa modo musica") ||
+                command.contains("ativar musica") ||
+                command.contains("ativa musica") ||
+                command == "musica" -> {
+                applyScene("Música", true)
+                speak("Modo música ativado.")
             }
             command.contains("modo noite") ||
                 command.contains("modo noturno") ||
@@ -1154,7 +1177,6 @@ private lateinit var gameModeView: GameModeView
             })
 
             addView(bootStatus, LayoutParams(dp(170), dp(28), Gravity.CENTER))
-            buildSceneRow()
             buildPerformanceRow()
             buildNavigation()
         }
@@ -1179,20 +1201,8 @@ private lateinit var gameModeView: GameModeView
 
         private fun buildSceneRow() {
             sceneRow.removeAllViews()
-            listOf("Normal", "Gaming", "Estudo", "Trabalho", "Noite").forEach { scene ->
-                val button = textView(scene, 9.5f, if (scene == "Gaming") white else gray, true).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(dp(8), 0, dp(8), 0)
-                    background = rounded(
-                        if (scene == "Gaming") Color.argb(205, 91, 52, 132) else Color.argb(135, 18, 15, 24),
-                        17f
-                    )
-                    setOnClickListener { applyScene(scene, true) }
-                }
-                sceneRow.addView(button, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
-                })
-            }
+            sceneRow.visibility = View.GONE
+            sceneRow.layoutParams = LinearLayout.LayoutParams(1, 1)
         }
 
         private fun metric(title: String, value: String): LinearLayout {
@@ -1433,7 +1443,7 @@ private lateinit var gameModeView: GameModeView
         val sceneColor = when (scene) {
             "Gaming" -> Color.rgb(150, 75, 220)
             "Estudo" -> Color.rgb(105, 125, 205)
-            "Trabalho" -> Color.rgb(150, 150, 170)
+            "Música" -> Color.rgb(190, 78, 155)
             "Noite" -> Color.rgb(92, 65, 145)
             else -> purpleBright
         }
@@ -1441,27 +1451,19 @@ private lateinit var gameModeView: GameModeView
         greetingText.text = when (scene) {
             "Gaming" -> "Tudo pronto para jogar."
             "Estudo" -> "Foco ativado."
-            "Trabalho" -> "Área de trabalho pronta."
+            "Música" -> "Área de musica pronta."
             "Noite" -> "Modo noturno ativado."
             else -> "Tudo pronto para você."
         }
 
         if (::sceneStrip.isInitialized) {
-            for (i in 0 until sceneStrip.childCount) {
-                val b = sceneStrip.getChildAt(i) as TextView
-                val active = b.text.toString() == scene
-                b.setTextColor(if (active) white else gray)
-                b.background = rounded(
-                    if (active) Color.argb(210, Color.red(sceneColor), Color.green(sceneColor), Color.blue(sceneColor))
-                    else Color.argb(145, 18, 15, 25),
-                    18f
-                )
-            }
+            sceneStrip.visibility = View.GONE
         }
 
         if (::dock.isInitialized) {
             dock.setBackgroundColor(Color.argb(215, 10, 9, 15))
         }
+        updateHomeSceneStyle(scene, sceneColor)
         if (::sidebar.isInitialized) buildQuickApps()
 
         if (scene == "Gaming") {
@@ -1471,16 +1473,35 @@ private lateinit var gameModeView: GameModeView
         }
     }
 
-    private fun showSceneChooser() {
-        val options = arrayOf("Normal", "Gaming", "Estudo", "Trabalho", "Noite")
-        AlertDialog.Builder(this)
-            .setTitle("Escolher cena")
-            .setSingleChoiceItems(options, options.indexOf(currentScene)) { dialog, which ->
-                applyScene(options[which], true)
-                dialog.dismiss()
-                closeSettings()
-            }
-            .show()
+    private fun updateHomeSceneStyle(scene: String, accent: Int) {
+        if (!::homeView.isInitialized) return
+        val summary = homeView.findViewWithTag<View>("scene-summary")
+        val title = homeView.findViewWithTag<TextView>("scene-title")
+        val subtitle = homeView.findViewWithTag<TextView>("scene-subtitle")
+        val value = homeView.findViewWithTag<TextView>("scene-value")
+
+        title?.text = when (scene) {
+            "Gaming" -> "Gaming ativo."
+            "Estudo" -> "Foco ativado."
+            "Música" -> "Seu espaço sonoro."
+            "Noite" -> "Ambiente noturno."
+            else -> "Tudo pronto para você."
+        }
+        subtitle?.text = when (scene) {
+            "Gaming" -> "Desempenho e seus apps de jogo em um ambiente dedicado."
+            "Estudo" -> "Um ambiente limpo para concentração e organização."
+            "Música" -> "Controles, aplicativos e informações para acompanhar sua música."
+            "Noite" -> "Visual reduzido e confortável para usar no escuro."
+            else -> "Acesso rápido aos seus aplicativos e ao assistente."
+        }
+        value?.text = when (scene) {
+            "Gaming" -> "GAMING"
+            "Estudo" -> "FOCO"
+            "Música" -> "MÚSICA"
+            "Noite" -> "NOITE"
+            else -> "NORMAL"
+        }
+        summary?.background = rounded(Color.argb(220, 14, 12, 20), 26f, Color.argb(115, Color.red(accent), Color.green(accent), Color.blue(accent)))
     }
 
     private fun openDrawer() {
@@ -1531,7 +1552,7 @@ private lateinit var gameModeView: GameModeView
         greetingText.text = when (currentScene) {
             "Gaming" -> "Tudo pronto para jogar."
             "Estudo" -> "Foco ativado."
-            "Trabalho" -> "Área de trabalho pronta."
+            "Música" -> "Área de musica pronta."
             "Noite" -> "Modo noturno ativado."
             else -> when (hour) {
                 in 5..11 -> "Bom dia."
