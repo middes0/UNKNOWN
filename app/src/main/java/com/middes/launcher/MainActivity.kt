@@ -1,6 +1,7 @@
 package com.middes.launcher
 
 import android.app.AlertDialog
+import android.app.UiModeManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.content.Context
