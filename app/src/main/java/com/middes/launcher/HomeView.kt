@@ -21,6 +21,7 @@ class HomeView(
     private val onOpenNexa: () -> Unit,
     private val onScenePicker: () -> Unit,
     private val onSceneAction: () -> Unit,
+    private val onLaunchApp: (String) -> Unit,
     private val appLabel: (String) -> String?,
     private val appIcon: (String) -> Drawable?,
     private val favoritePackages: () -> List<String>,
@@ -54,7 +55,7 @@ class HomeView(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
-        addView(content, LayoutParams(-1, -1))
+        addView(content, FrameLayout.LayoutParams(-1, -1))
         build()
     }
 
@@ -152,7 +153,7 @@ class HomeView(
 
     private fun dockItem(glyph: String, label: String, action: () -> Unit): LinearLayout =
         LinearLayout(context).apply {
-            orientation = VERTICAL
+            orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
             setOnClickListener { action() }
             addView(MiddesUi.text(context, glyph, 21f, MiddesColors.muted, true).apply {
