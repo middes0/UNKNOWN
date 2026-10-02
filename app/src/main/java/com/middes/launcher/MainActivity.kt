@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.view.View
+import android.util.Log
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -152,9 +153,8 @@ class MainActivity : ComponentActivity() {
                     try {
                         handleNexaCommand(raw)
                     } catch (error: Exception) {
-                        error.printStackTrace()
-                        showHome()
-                        nexa.speak("O comando encontrou um erro. Voltei para a tela inicial.")
+                        Log.e("NEXA", "Falha ao executar comando: $raw", error)
+                        nexa.speak("Não consegui executar esse comando.")
                     }
                 }
             },
@@ -315,34 +315,27 @@ class MainActivity : ComponentActivity() {
         }
 
         when {
-            matchesAny(command, "trocar cena", "troca a cena", "troque a cena", "mudar cena", "muda a cena", "mude a cena") -> {
-                when {
-                    command.contains("estudo") || command.contains("estudar") -> {
-                        applyScene("Estudo", true)
-                        nexa.speak("Modo estudo ativado.")
-                    }
-                    command.contains("gaming") || command.contains("game") || command.contains("gamer") -> {
-                        applyScene("Gaming", true)
-                        nexa.speak("Modo gaming ativado.")
-                    }
-                    command.contains("musica") || command.contains("musical") -> {
-                        applyScene("Música", true)
-                        nexa.speak("Modo música ativado.")
-                    }
-                    command.contains("noite") || command.contains("noturno") -> {
-                        applyScene("Noite", true)
-                        nexa.speak("Modo noite ativado.")
-                    }
-                    command.contains("normal") || command.contains("padrao") -> {
-                        applyScene("Normal", true)
-                        nexa.speak("Modo normal ativado.")
-                    }
-                    else -> nexa.speak("Qual cena você quer ativar?")
+            isSceneChangeRequest(command) -> {
+                val target = sceneFromCommand(command)
+                if (target == null) {
+                    nexa.speak("Qual modo você quer ativar?")
+                } else if (applyScene(target, true)) {
+                    nexa.speak(
+                        when (target) {
+                            "Estudo" -> "Modo estudo ativado."
+                            "Música" -> "Modo música ativado."
+                            "Noite" -> "Modo noite ativado."
+                            "Gaming" -> "Modo gaming ativado."
+                            else -> "Modo normal ativado."
+                        }
+                    )
+                } else {
+                    nexa.speak("Não consegui ativar esse modo.")
                 }
             }
-            matchesAny(command, "ativar modo estudo", "ativa modo estudo", "modo estudo", "ativar estudo", "estudo", "estudar") -> {
-                applyScene("Estudo", true)
-                nexa.speak("Modo estudo ativado.")
+            matchesAny(command, "ativar modo estudo", "ativa modo estudo", "modo estudo", "modo de estudo", "ativar estudo", "estudo", "estudar", "estudio") -> {
+                if (applyScene("Estudo", true)) nexa.speak("Modo estudo ativado.")
+                else nexa.speak("Não consegui ativar o modo estudo.")
             }
             matchesAny(command, "iniciar foco", "inicia foco", "comecar foco", "comeca foco", "continuar foco") -> {
                 if (store.scene != "Estudo") applyScene("Estudo", true)
@@ -362,22 +355,22 @@ class MainActivity : ComponentActivity() {
                 refreshHome()
                 nexa.speak("Foco reiniciado.")
             }
-            matchesAny(command, "ativar modo gaming", "ativa modo gaming", "modo gaming", "modo game", "modo gamer", "ativar gaming", "ativar game", "ativar gamer", "gaming", "game", "gamer") -> {
-                applyScene("Gaming", true)
-                nexa.speak("Modo gaming ativado.")
+            matchesAny(command, "ativar modo gaming", "ativa modo gaming", "modo gaming", "modo de gaming", "modo game", "modo gamer", "ativar gaming", "ativar game", "ativar gamer", "gaming", "game", "gamer") -> {
+                if (applyScene("Gaming", true)) nexa.speak("Modo gaming ativado.")
+                else nexa.speak("Não consegui ativar o modo gaming.")
             }
-            matchesAny(command, "ativar modo musica", "ativa modo musica", "modo musica", "ativar musica", "musica", "musical") -> {
-                applyScene("Música", true)
-                nexa.speak("Modo música ativado.")
+            matchesAny(command, "ativar modo musica", "ativa modo musica", "modo musica", "modo de musica", "ativar musica", "musica", "musical", "audio") -> {
+                if (applyScene("Música", true)) nexa.speak("Modo música ativado.")
+                else nexa.speak("Não consegui ativar o modo música.")
             }
             matchesAny(command, "abrir musica", "abrir player", "abrir spotify", "abrir youtube music") -> openMusicPlayer()
             matchesAny(command, "ativar modo noite", "ativar modo noturno", "ativa modo noite", "modo noite", "modo noturno", "ativar noite", "noite", "noturno") -> {
-                applyScene("Noite", true)
-                nexa.speak("Modo noite ativado.")
+                if (applyScene("Noite", true)) nexa.speak("Modo noite ativado.")
+                else nexa.speak("Não consegui ativar o modo noite.")
             }
-            matchesAny(command, "ativar modo normal", "ativa modo normal", "modo normal", "voltar ao normal", "voltar pro normal", "normal", "padrao") -> {
-                applyScene("Normal", true)
-                nexa.speak("Modo normal ativado.")
+            matchesAny(command, "ativar modo normal", "ativa modo normal", "modo normal", "modo padrao", "voltar ao normal", "voltar pro normal", "normal", "padrao", "principal") -> {
+                if (applyScene("Normal", true)) nexa.speak("Modo normal ativado.")
+                else nexa.speak("Não consegui voltar ao modo normal.")
             }
             matchesAny(command, "ativar flow", "ativa flow", "abrir flow", "abrir middes flow", "modo flow") -> {
                 showFlow()
@@ -494,10 +487,38 @@ class MainActivity : ComponentActivity() {
     private fun matchesAny(command: String, vararg values: String): Boolean =
         values.any { command == it || command.contains(it) }
 
+    private fun containsWord(command: String, word: String): Boolean =
+        Regex("\\b" + Regex.escape(word) + "\\b").containsMatchIn(command)
+
+    private fun sceneFromCommand(command: String): String? = when {
+        containsWord(command, "estudo") || containsWord(command, "estudar") || containsWord(command, "estudio") ||
+            containsWord(command, "foco") -> "Estudo"
+        containsWord(command, "gaming") || containsWord(command, "game") || containsWord(command, "gamer") ||
+            containsWord(command, "jogo") || containsWord(command, "jogos") || containsWord(command, "jogar") -> "Gaming"
+        containsWord(command, "musica") || containsWord(command, "musical") || containsWord(command, "audio") ||
+            containsWord(command, "som") -> "Música"
+        containsWord(command, "noite") || containsWord(command, "noturno") || containsWord(command, "noturna") -> "Noite"
+        containsWord(command, "normal") || containsWord(command, "padrao") || containsWord(command, "principal") -> "Normal"
+        else -> null
+    }
+
+    private fun isSceneChangeRequest(command: String): Boolean {
+        val actionWords = listOf(
+            "trocar", "troca", "troque",
+            "mudar", "muda", "mude",
+            "alterar", "altera", "altere",
+            "ativar", "ativa", "ative",
+            "colocar", "coloca", "coloque",
+            "selecionar", "seleciona", "selecione",
+            "entrar", "entra"
+        )
+        return sceneFromCommand(command) != null && actionWords.any { containsWord(command, it) }
+    }
+
     private fun normalizeVoice(value: String): String =
         Normalizer.normalize(value.lowercase(Locale("pt", "BR")), Normalizer.Form.NFD)
-            .replace("\\\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
-            .replace(Regex("\\\\s+"), " ")
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+            .replace(Regex("\\s+"), " ")
             .trim()
 
     private fun showHome() {
@@ -552,29 +573,23 @@ class MainActivity : ComponentActivity() {
         if (active != Screen.GAME) gameView.stop()
     }
 
-    private fun applyScene(scene: String, save: Boolean) {
-        if (scene !in SceneManager.scenes) return
-        try {
+    private fun applyScene(scene: String, save: Boolean): Boolean {
+        if (scene !in SceneManager.scenes) return false
+
+        return try {
             if (save) store.scene = scene
             if (scene != "Estudo") {
                 studyRunning = false
                 handler.removeCallbacks(studyTicker)
             }
 
-            // Os modos internos são visuais. Não alteramos o modo global do Android
-            // durante um comando de voz, evitando recriação da Activity.
+            SceneManager.applySystem(this, window, scene)
+
             when (scene) {
                 "Gaming" -> {
                     screen = Screen.GAME
                     setScreenVisibility(screen)
-                    gameView.post {
-                        try {
-                            gameView.start(buildGameApps(), true)
-                        } catch (error: Exception) {
-                            error.printStackTrace()
-                            applyScene("Normal", true)
-                        }
-                    }
+                    gameView.start(buildGameApps(), true)
                 }
                 "Normal" -> {
                     screen = Screen.HOME
@@ -584,25 +599,13 @@ class MainActivity : ComponentActivity() {
                 else -> {
                     screen = Screen.SCENE
                     setScreenVisibility(screen)
-                    sceneView.post {
-                        try {
-                            sceneView.setScene(scene, formatStudyTime(), studyRunning)
-                        } catch (error: Exception) {
-                            error.printStackTrace()
-                            applyScene("Normal", true)
-                        }
-                    }
+                    sceneView.setScene(scene, formatStudyTime(), studyRunning)
                 }
             }
+            true
         } catch (error: Exception) {
-            error.printStackTrace()
-            store.scene = "Normal"
-            studyRunning = false
-            handler.removeCallbacks(studyTicker)
-            SceneManager.applySystem(this, window, "Normal")
-            screen = Screen.HOME
-            setScreenVisibility(screen)
-            refreshHome()
+            Log.e("NEXA", "Falha ao ativar cena $scene", error)
+            false
         }
     }
 
