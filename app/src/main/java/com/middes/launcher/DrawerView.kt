@@ -25,6 +25,10 @@ class DrawerView(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
     }
+    private val favoriteRow = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
     private val appsRoot = LinearLayout(context).apply { orientation = VERTICAL }
     private var allApps = emptyList<InstalledApp>()
 
@@ -62,7 +66,18 @@ class DrawerView(
         search.setPadding(MiddesUi.dp(context, 18f), 0, MiddesUi.dp(context, 18f), 0)
         search.background = MiddesUi.rounded(context, MiddesColors.surfaceRaised, 20f)
         addView(search, LayoutParams(-1, MiddesUi.dp(context, 52f)).apply {
-            setMargins(0, MiddesUi.dp(context, 12f), 0, MiddesUi.dp(context, 12f))
+            setMargins(0, MiddesUi.dp(context, 12f), 0, MiddesUi.dp(context, 10f))
+        })
+
+        addView(MiddesUi.text(context, "FAVORITOS", 8.5f, MiddesColors.muted, true).apply {
+            letterSpacing = 0.13f
+        }, LayoutParams(-1, MiddesUi.dp(context, 18f)))
+
+        addView(HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(favoriteRow, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 74f)))
+        }, LayoutParams(-1, MiddesUi.dp(context, 74f)).apply {
+            setMargins(0, MiddesUi.dp(context, 4f), 0, MiddesUi.dp(context, 8f))
         })
 
         addView(MiddesUi.text(context, "RECENTES", 8.5f, MiddesColors.muted, true).apply {
@@ -93,6 +108,7 @@ class DrawerView(
 
     fun refresh() {
         allApps = repo.getLaunchableApps()
+        renderFavorites()
         renderRecents()
         renderApps(search.text?.toString().orEmpty())
     }
@@ -100,6 +116,30 @@ class DrawerView(
     fun focusSearch() {
         search.requestFocus()
         search.selectAll()
+        search.post {
+            val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun renderFavorites() {
+        favoriteRow.removeAllViews()
+        val favorites = store.favorites()
+            .mapNotNull { repo.findByPackage(it) }
+            .distinctBy { it.packageName }
+            .take(10)
+
+        if (favorites.isEmpty()) {
+            favoriteRow.addView(MiddesUi.text(context, "Segure um app para adicioná-lo.", 10f, MiddesColors.muted),
+                LayoutParams(MiddesUi.dp(context, 240f), MiddesUi.dp(context, 74f)))
+            return
+        }
+
+        favorites.forEach { app ->
+            favoriteRow.addView(miniApp(app), LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
+                setMargins(0, 0, MiddesUi.dp(context, 8f), 0)
+            })
+        }
     }
 
     private fun renderRecents() {
@@ -116,10 +156,9 @@ class DrawerView(
         }
 
         recent.forEach { app ->
-            recentRow.addView(miniApp(app),
-                LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
-                    setMargins(0, 0, MiddesUi.dp(context, 8f), 0)
-                })
+            recentRow.addView(miniApp(app), LayoutParams(MiddesUi.dp(context, 66f), MiddesUi.dp(context, 74f)).apply {
+                setMargins(0, 0, MiddesUi.dp(context, 8f), 0)
+            })
         }
     }
 
@@ -128,9 +167,12 @@ class DrawerView(
             orientation = VERTICAL
             gravity = Gravity.CENTER
             setOnClickListener { onLaunch(app.packageName) }
+            setOnLongClickListener {
+                onLongPress(app)
+                true
+            }
             val icon = try { app.resolveInfo.loadIcon(context.packageManager) } catch (_: Exception) { null }
-            if (icon != null) addView(MiddesUi.appIcon(context, icon, 42),
-                LayoutParams(-1, MiddesUi.dp(context, 46f)))
+            if (icon != null) addView(MiddesUi.appIcon(context, icon, 42), LayoutParams(-1, MiddesUi.dp(context, 46f)))
             addView(MiddesUi.text(context, app.label, 8.5f, MiddesColors.muted).apply {
                 gravity = Gravity.CENTER
                 maxLines = 1
@@ -165,8 +207,7 @@ class DrawerView(
                 }
                 appsRoot.addView(row, LayoutParams(-1, MiddesUi.dp(context, 108f)))
             }
-            row?.addView(appItem(app),
-                LinearLayout.LayoutParams(0, MiddesUi.dp(context, 104f), 1f))
+            row?.addView(appItem(app), LinearLayout.LayoutParams(0, MiddesUi.dp(context, 104f), 1f))
         }
     }
 
@@ -182,6 +223,7 @@ class DrawerView(
             }
             contentDescription = app.label
         }
+
         val icon = try { app.resolveInfo.loadIcon(context.packageManager) } catch (_: Exception) { null }
         val iconWrap = android.widget.FrameLayout(context)
         if (icon != null) iconWrap.addView(MiddesUi.appIcon(context, icon, 56),
