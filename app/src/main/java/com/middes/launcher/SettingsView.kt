@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Switch
 import androidx.core.content.ContextCompat
 
 class SettingsView(
