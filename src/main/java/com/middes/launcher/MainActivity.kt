@@ -1469,7 +1469,7 @@ class MainActivity : ComponentActivity() {
             responses += "foco de " + minutes + " minutos"
         }
 
-        val brightnessMatch = Regex("""brilho(?:\s+.*?\s+|\s*(?:em|para|de)\s*)(\d{1,3})\s*%?""").find(command)
+        val brightnessMatch = Regex("""brilho\D+(\d{1,3})\s*%?""").find(command)
         if (containsWord(command, "brilho") && brightnessMatch != null) {
             val brightness = brightnessMatch.groupValues[1].toInt().coerceIn(0, 100)
             profile = profile.copy(brightnessPercent = brightness)
@@ -1477,7 +1477,7 @@ class MainActivity : ComponentActivity() {
             responses += "brilho em " + brightness + " por cento"
         }
 
-        val volumeMatch = Regex("""volume(?:\s+.*?\s+|\s*(?:em|para|de)\s*)(\d{1,3})\s*%?""").find(command)
+        val volumeMatch = Regex("""volume\D+(\d{1,3})\s*%?""").find(command)
         if (containsWord(command, "volume") && volumeMatch != null) {
             val volume = volumeMatch.groupValues[1].toInt().coerceIn(0, 100)
             profile = profile.copy(volumePercent = volume)
@@ -1501,7 +1501,28 @@ class MainActivity : ComponentActivity() {
             responses += if (dndOn) "Não perturbe ativado" else "Não perturbe desativado"
         }
 
-        if (containsAnyText(command, "quando eu ativar", "quando ativar", "ao ativar", "quando entrar") &&
+        if (scene == "Estudo" &&
+            containsAnyText(command, "quando ativar", "quando eu ativar", "ao ativar") &&
+            containsAnyText(command, "iniciar foco", "inicia foco", "ligar foco", "liga foco")
+        ) {
+            profile = profile.copy(autoStartFocus = true)
+            changed = true
+            responses += "iniciar o foco automaticamente"
+        }
+
+        if (scene == "Estudo" &&
+            containsAnyText(command, "desativar foco automatico", "desligar foco automatico", "sem foco automatico")
+        ) {
+            profile = profile.copy(autoStartFocus = false)
+            changed = true
+            responses += "não iniciar o foco automaticamente"
+        }
+
+        if (containsAnyText(command,
+                command,
+                "quando eu ativar", "quando ativar", "ao ativar", "quando entrar",
+                "configurar", "configura", "definir", "deixar"
+            ) &&
             containsAnyText(command, "abrir ", "abre ", "abra ", "iniciar ", "inicia ", "inicie ")
         ) {
             val appName = Regex("""(?:abrir|abre|abra|iniciar|inicia|inicie)\s+(.+)$""")
