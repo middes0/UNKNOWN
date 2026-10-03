@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         applyWallpaper()
-        val protocolResult = protocolController.applyScene(store.scene, store.sceneProfile(store.scene))
+        val protocolResult = protocolController.applyScene(store.scene, store.sceneProfile(store.scene), false, false)
         if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS) {
             showDndAccessDialog()
         }
@@ -914,7 +914,7 @@ class MainActivity : ComponentActivity() {
         screen = Screen.HOME
         if (::gameView.isInitialized) gameView.stop()
         if (::flowView.isInitialized) flowView.stop()
-        protocolController.applyScene("Normal")
+        protocolController.applyScene("Normal", store.sceneProfile("Normal"))
         if (::hudView.isInitialized) hudView.setMode("Normal")
         setScreenVisibility(screen)
         refreshHome()
