@@ -812,7 +812,7 @@ class MainActivity : ComponentActivity() {
             Screen.HOME -> {
                 if (!silent) nexa.speak("Já estou na tela inicial.")
             }
-            Screen.DRAWER, Screen.SETTINGS, Screen.PROFILES, Screen.NEXA, Screen.FLOW, Screen.SCENE, Screen.GAME -> {
+            Screen.DRAWER, Screen.SETTINGS, Screen.CONTROL, Screen.PROFILES, Screen.NEXA, Screen.FLOW, Screen.SCENE, Screen.GAME -> {
                 showHome()
                 if (!silent) nexa.speak("Voltando.")
             }
