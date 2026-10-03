@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var homeView: HomeView
     private lateinit var drawerView: DrawerView
     private lateinit var settingsView: SettingsView
+    private lateinit var profilesView: SceneProfilesView
     private lateinit var flowView: MiddesFlowView
     private lateinit var gameView: GameModeView
     private lateinit var nexaView: NexaView
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var protocolController: SceneProtocolController
     private lateinit var nexaContext: NexaSystemContext
     private var dndPromptShown = false
+    private var wallpaperTargetScene: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var screen = Screen.HOME
@@ -94,8 +96,15 @@ class MainActivity : ComponentActivity() {
             try {
                 contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } catch (_: Exception) {}
-            store.wallpaperUri = uri.toString()
+            val targetScene = wallpaperTargetScene
+            if (targetScene.isNullOrBlank()) {
+                store.wallpaperUri = uri.toString()
+            } else {
+                store.setSceneWallpaperUri(targetScene, uri.toString())
+            }
+            wallpaperTargetScene = null
             applyWallpaper()
+            if (::profilesView.isInitialized) profilesView.rebuild()
         }
     }
 
@@ -119,7 +128,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         applyWallpaper()
-        val protocolResult = protocolController.applyScene(store.scene)
+        val protocolResult = protocolController.applyScene(store.scene, store.sceneProfile(store.scene))
         if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS) {
             showDndAccessDialog()
         }
@@ -148,7 +157,9 @@ class MainActivity : ComponentActivity() {
     override fun onBackPressed() {
         when (screen) {
             Screen.HOME -> Unit
-            Screen.DRAWER, Screen.SETTINGS, Screen.FLOW, Screen.NEXA -> showHome()
+            Screen.DRAWER, Screen.FLOW, Screen.NEXA -> showHome()
+            Screen.SETTINGS -> showHome()
+            Screen.PROFILES -> showSettings()
             Screen.SCENE -> {
                 if (::sceneView.isInitialized) sceneView.performExitAnimation()
                 else applyScene("Normal", true)
@@ -233,6 +244,7 @@ class MainActivity : ComponentActivity() {
             onBack = { showHome() },
             onWallpaper = { chooseWallpaper() },
             onSceneApps = { showSceneAppsChooser() },
+            onOpenProfiles = { showProfiles() },
             onOpenDrawer = { showDrawer(false) },
             onOpenFlow = { showFlow() },
             onToggleNexa = { toggleNexa() },
@@ -243,6 +255,26 @@ class MainActivity : ComponentActivity() {
             onOpenDndSettings = { protocolController.openDndSettings() }
         )
         root.addView(settingsView, FrameLayout.LayoutParams(-1, -1))
+
+        profilesView = SceneProfilesView(
+            this,
+            store,
+            repo,
+            SceneManager.scenes,
+            onBack = { showSettings() },
+            onSceneWallpaper = { scene ->
+                wallpaperTargetScene = scene
+                wallpaperPicker.launch(arrayOf("image/*"))
+            },
+            onChanged = {
+                if (::settingsView.isInitialized) settingsView.rebuild()
+                applyWallpaper()
+                if (store.scene != "Normal") {
+                    applyScene(store.scene, true, false, false)
+                }
+            }
+        )
+        root.addView(profilesView, FrameLayout.LayoutParams(-1, -1))
 
         nexaView = NexaView(
             this,
@@ -311,7 +343,7 @@ class MainActivity : ComponentActivity() {
         )
         root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
 
-        listOf<View>(drawerView, settingsView, nexaView, sceneView, flowView, gameView).forEach {
+        listOf<View>(drawerView, settingsView, profilesView, nexaView, sceneView, flowView, gameView).forEach {
             it.visibility = View.GONE
         }
 
@@ -681,7 +713,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startStudy() {
-        if (studyRemainingSeconds <= 0) studyRemainingSeconds = 25 * 60
+        if (studyRemainingSeconds <= 0) {
+            studyRemainingSeconds = store.sceneProfile("Estudo").focusMinutes * 60
+        }
         studyRunning = true
         handler.removeCallbacks(studyTicker)
         handler.post(studyTicker)
@@ -903,6 +937,14 @@ class MainActivity : ComponentActivity() {
         setScreenVisibility(screen)
     }
 
+    private fun showProfiles() {
+        if (::gameView.isInitialized) gameView.stop()
+        if (::flowView.isInitialized) flowView.stop()
+        profilesView.rebuild()
+        screen = Screen.PROFILES
+        setScreenVisibility(screen)
+    }
+
     private fun showFlow() {
         if (::gameView.isInitialized) gameView.stop()
         if (store.scene == "Gaming") {
@@ -919,6 +961,7 @@ class MainActivity : ComponentActivity() {
         homeView.visibility = if (active == Screen.HOME) View.VISIBLE else View.GONE
         drawerView.visibility = if (active == Screen.DRAWER) View.VISIBLE else View.GONE
         settingsView.visibility = if (active == Screen.SETTINGS) View.VISIBLE else View.GONE
+        profilesView.visibility = if (active == Screen.PROFILES) View.VISIBLE else View.GONE
         nexaView.visibility = if (active == Screen.NEXA) View.VISIBLE else View.GONE
         sceneView.visibility = if (active == Screen.SCENE) View.VISIBLE else View.GONE
         flowView.visibility = if (active == Screen.FLOW) View.VISIBLE else View.GONE
@@ -927,18 +970,22 @@ class MainActivity : ComponentActivity() {
         if (active != Screen.GAME) gameView.stop()
     }
 
-    private fun applyScene(scene: String, save: Boolean, promptDnd: Boolean = true): Boolean {
+    private fun applyScene(scene: String, save: Boolean, promptDnd: Boolean = true, launchConfiguredApp: Boolean = true): Boolean {
         if (scene !in SceneManager.scenes) return false
 
         return try {
             if (save) store.scene = scene
+            val profile = store.sceneProfile(scene)
+            if (scene == "Estudo" && !studyRunning) {
+                studyRemainingSeconds = profile.focusMinutes * 60
+            }
             if (::hudView.isInitialized) hudView.setMode(scene)
             if (scene != "Estudo") {
                 studyRunning = false
                 handler.removeCallbacks(studyTicker)
             }
 
-            val protocolResult = protocolController.applyScene(scene)
+            val protocolResult = protocolController.applyScene(scene, profile)
             if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS && promptDnd) {
                 showDndAccessDialog()
             }
@@ -960,6 +1007,15 @@ class MainActivity : ComponentActivity() {
                     sceneView.setScene(scene, formatStudyTime(), studyRunning, protocolStatus(scene))
                 }
             }
+
+            applyWallpaper()
+
+            if (launchConfiguredApp && profile.autoLaunch && !profile.autoLaunchPackage.isNullOrBlank()) {
+                val packageName = profile.autoLaunchPackage
+                if (repo.icon(packageName) != null) {
+                    handler.postDelayed({ launchPackage(packageName) }, 320L)
+                }
+            }
             true
         } catch (error: Exception) {
             Log.e("NEXA", "Falha ao ativar cena $scene", error)
@@ -968,7 +1024,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun protocolStatus(scene: String): String =
-        if (scene == "Estudo" || scene == "Noite" || scene == "Gaming") {
+        if (store.sceneProfile(scene).dndEnabled) {
             protocolController.dndDescription()
         } else {
             ""
@@ -1098,11 +1154,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun chooseWallpaper() {
+        wallpaperTargetScene = null
         wallpaperPicker.launch(arrayOf("image/*"))
     }
 
     private fun applyWallpaper() {
-        val uri = store.wallpaperUri
+        val uri = store.effectiveWallpaperUri(store.scene)
         if (uri == null) {
             wallpaperView.setImageDrawable(null)
             wallpaperView.setBackgroundColor(MiddesColors.background)
@@ -1115,7 +1172,7 @@ class MainActivity : ComponentActivity() {
                 wallpaperView.setBackgroundColor(MiddesColors.background)
             }
         }
-        val dim = if (store.dimWallpaper) 105 else 38
+        val dim = if (store.sceneProfile(store.scene).dimWallpaper) 105 else 38
         dimView.setBackgroundColor(android.graphics.Color.argb(dim, 0, 0, 0))
     }
 
@@ -1126,7 +1183,7 @@ class MainActivity : ComponentActivity() {
         nexaState = nexaState,
         screen = screen.name,
         recentApps = store.recentApps(),
-        wallpaperPersonalized = store.wallpaperUri != null
+        wallpaperPersonalized = store.effectiveWallpaperUri(store.scene) != null
     )
 
     private fun speakNexaSystemStatus() {
@@ -1242,5 +1299,5 @@ class MainActivity : ComponentActivity() {
         const val ACTION_IMAGE_CAPTURE = "android.media.action.IMAGE_CAPTURE"
     }
 
-    private enum class Screen { HOME, DRAWER, SETTINGS, NEXA, SCENE, FLOW, GAME }
+    private enum class Screen { HOME, DRAWER, SETTINGS, PROFILES, NEXA, SCENE, FLOW, GAME }
 }
