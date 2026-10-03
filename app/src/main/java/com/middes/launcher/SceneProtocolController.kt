@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.Settings
 import android.view.Window
 import android.view.WindowManager
+import kotlin.math.roundToInt
 
 /**
  * Centraliza os efeitos reais dos protocolos de cena.
@@ -29,28 +30,29 @@ class SceneProtocolController(
     private var savedBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
     private var savedInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL
     private var changedDnd = false
+    private var savedMediaVolume = 0
 
-    fun applyScene(scene: String): Result {
+    fun applyScene(scene: String, profile: LauncherStore.SceneProfile): Result {
         return try {
-            val usesDnd = scene == "Estudo" || scene == "Noite" || scene == "Gaming"
-
-            if (!usesDnd) {
+            if (scene == "Normal") {
                 restore()
-                protocolActive = false
                 return Result.APPLIED
             }
 
             if (!protocolActive) {
                 savedBrightness = window.attributes.screenBrightness
                 savedInterruptionFilter = notificationManager.currentInterruptionFilter
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                savedMediaVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
                 protocolActive = true
                 changedDnd = false
             }
 
-            val dndResult = enableDnd()
-            applyBrightness(scene)
+            val dndResult = applyDnd(profile.dndEnabled)
+            applyBrightness(profile.brightnessPercent)
+            applyMediaVolume(profile.mediaVolumePercent)
 
-            if (!dndResult) Result.MISSING_DND_ACCESS else Result.APPLIED
+            if (profile.dndEnabled && !dndResult) Result.MISSING_DND_ACCESS else Result.APPLIED
         } catch (_: Exception) {
             Result.FAILED
         }
@@ -103,10 +105,23 @@ class SceneProtocolController(
         }
 
         changedDnd = false
+        savedMediaVolume = 0
         protocolActive = false
     }
 
-    private fun enableDnd(): Boolean {
+    private fun applyDnd(enabled: Boolean): Boolean {
+        if (!enabled) {
+            try {
+                if (changedDnd && hasDndAccess()) {
+                    notificationManager.setInterruptionFilter(savedInterruptionFilter)
+                    changedDnd = false
+                }
+                return true
+            } catch (_: Exception) {
+                return false
+            }
+        }
+
         if (!hasDndAccess()) return false
 
         return try {
@@ -122,14 +137,26 @@ class SceneProtocolController(
         }
     }
 
-    private fun applyBrightness(scene: String) {
+    private fun applyBrightness(percent: Int) {
         try {
             val params = window.attributes
             params.screenBrightness =
-                if (scene == "Noite") 0.18f else savedBrightness
+                if (percent in 1..100) percent / 100f else savedBrightness
             window.attributes = params
         } catch (_: Exception) {
             // O restante do protocolo continua mesmo sem controle de brilho.
+        }
+    }
+
+    private fun applyMediaVolume(percent: Int) {
+        if (percent !in 0..100) return
+        try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+            val target = ((max * percent) / 100f).roundToInt().coerceIn(0, max)
+            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, target, 0)
+        } catch (_: Exception) {
+            // O restante do protocolo continua mesmo sem controle de volume.
         }
     }
 
