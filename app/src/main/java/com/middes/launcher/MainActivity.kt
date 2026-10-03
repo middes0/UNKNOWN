@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var repo: AppRepository
     private lateinit var nexa: NexaController
     private lateinit var protocolController: SceneProtocolController
+    private lateinit var nexaContext: NexaSystemContext
     private var dndPromptShown = false
 
     private val handler = Handler(Looper.getMainLooper())
@@ -108,6 +109,7 @@ class MainActivity : ComponentActivity() {
         store = LauncherStore(this)
         repo = AppRepository(this)
         protocolController = SceneProtocolController(this, window)
+        nexaContext = NexaSystemContext(this)
         if (store.scene == "Gaming") store.scene = "Normal"
 
         setupNexa()
@@ -417,6 +419,41 @@ class MainActivity : ComponentActivity() {
     private fun handleNexaSingleCommand(command: String, silent: Boolean = false) {
         val command = normalizeNexaAction(command)
         when {
+            matchesAny(command, "como esta sistema", "como vai sistema", "status do sistema", "estado do sistema", "diagnostico do sistema") -> {
+                if (!silent) speakNexaSystemStatus()
+            }
+            matchesAny(command, "qual modo estou", "qual modo esta ativo", "em qual modo estou", "modo atual", "qual e o modo atual") -> {
+                if (!silent) speakNexaModeStatus()
+            }
+            matchesAny(command, "quais apps usei recentemente", "quais aplicativos usei recentemente", "apps recentes", "aplicativos recentes", "o que usei recentemente") -> {
+                if (!silent) speakNexaRecentApps()
+            }
+            matchesAny(command, "o que esta aberto", "qual app esta aberto", "qual aplicativo esta aberto", "ultimo app aberto", "ultimo aplicativo aberto") -> {
+                if (!silent) speakNexaLastLaunchedApp()
+            }
+            matchesAny(command, "quanto de bateria tenho", "quanta bateria tenho", "nivel da bateria", "porcentagem da bateria", "bateria do celular") -> {
+                if (!silent) speakNexaBattery()
+            }
+            matchesAny(command, "prepare para estudar", "preparar para estudar", "prepare celular para estudar", "preparar celular para estudar", "prepare o celular para estudar") -> {
+                if (prepareForStudy() && !silent) nexa.speak("Celular preparado para estudar. Foco iniciado.")
+                else if (!silent) nexa.speak("Não consegui preparar o modo estudo.")
+            }
+            matchesAny(command, "prepare para dormir", "preparar para dormir", "prepare celular para dormir", "preparar celular para dormir") -> {
+                if (applyScene("Noite", true, !silent) && !silent) {
+                    nexa.speak("Modo noite ativado e tela escurecida.")
+                } else if (!silent) nexa.speak("Não consegui ativar o modo noite.")
+            }
+            matchesAny(command, "prepare para gaming", "preparar para gaming", "prepare para jogar", "preparar para jogar", "prepare celular para jogar", "preparar celular para jogar") -> {
+                if (applyScene("Gaming", true, !silent) && !silent) {
+                    nexa.speak("Ambiente gaming preparado.")
+                } else if (!silent) nexa.speak("Não consegui preparar o gaming.")
+            }
+            matchesAny(command, "prepare para musica", "preparar para musica", "prepare para ouvir musica", "preparar para ouvir musica") -> {
+                if (applyScene("Música", true, !silent) && !silent) {
+                    openMusicPlayer(true)
+                    nexa.speak("Ambiente de música preparado.")
+                } else if (!silent) nexa.speak("Não consegui preparar o ambiente de música.")
+            }
             isSceneChangeRequest(command) -> {
                 val target = sceneFromCommand(command)
                 if (target == null) {
@@ -1080,6 +1117,52 @@ class MainActivity : ComponentActivity() {
         }
         val dim = if (store.dimWallpaper) 105 else 38
         dimView.setBackgroundColor(android.graphics.Color.argb(dim, 0, 0, 0))
+    }
+
+    private fun nexaSnapshot(): NexaSystemContext.Snapshot = nexaContext.capture(
+        scene = store.scene,
+        studyRunning = studyRunning,
+        studyRemainingSeconds = studyRemainingSeconds,
+        nexaState = nexaState,
+        screen = screen.name,
+        recentApps = store.recentApps(),
+        wallpaperPersonalized = store.wallpaperUri != null
+    )
+
+    private fun speakNexaSystemStatus() {
+        nexa.speak(nexaContext.describe(nexaSnapshot()))
+    }
+
+    private fun speakNexaModeStatus() {
+        nexa.speak(nexaContext.describeMode(nexaSnapshot()))
+    }
+
+    private fun speakNexaRecentApps() {
+        nexa.speak(nexaContext.describeRecentApps(nexaSnapshot()) { packageName -> repo.label(packageName) })
+    }
+
+    private fun speakNexaLastLaunchedApp() {
+        nexa.speak(nexaContext.describeLastApp(nexaSnapshot()) { packageName -> repo.label(packageName) })
+    }
+
+    private fun speakNexaBattery() {
+        val battery = nexaSnapshot().batteryPercent
+        if (battery >= 0) {
+            nexa.speak("A bateria está em " + battery + "%.")
+        } else {
+            nexa.speak("Não consegui consultar a bateria agora.")
+        }
+    }
+
+    private fun prepareForStudy(): Boolean {
+        return try {
+            if (!applyScene("Estudo", true, true)) return false
+            startStudy()
+            true
+        } catch (error: Exception) {
+            Log.e("NEXA", "Falha ao preparar estudo", error)
+            false
+        }
     }
 
     private fun refreshHome() {
