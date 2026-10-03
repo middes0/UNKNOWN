@@ -72,10 +72,10 @@ class MiddesHudView(context: Context) : View(context) {
         }
         val a = { value: Int -> (value * alphaBoost).roundToInt().coerceIn(0, 255) }
         val x = dp(14f).toFloat()
-        val y = dp(28f).toFloat()
-        val len = dp(22f).toFloat()
+        val y = dp(76f).toFloat()
+        val len = dp(18f).toFloat()
 
-        paint.strokeWidth = dp(1f).toFloat()
+        paint.strokeWidth = dp(0.9f).toFloat()
         paint.color = Color.argb(a(80), Color.red(accent), Color.green(accent), Color.blue(accent))
 
         // Four HUD corner brackets: keeps the futuristic look without covering the content.
@@ -88,11 +88,11 @@ class MiddesHudView(context: Context) : View(context) {
         canvas.drawLine(w - x, h - dp(70f).toFloat(), w - x - len, h - dp(70f).toFloat(), paint)
         canvas.drawLine(w - x, h - dp(70f).toFloat(), w - x, h - dp(70f).toFloat() - len, paint)
 
-        paint.color = Color.argb(a(24), 255, 255, 255)
-        canvas.drawLine(w * 0.18f, dp(30f).toFloat(), w * 0.34f, dp(30f).toFloat(), paint)
-        canvas.drawLine(w * 0.66f, dp(30f).toFloat(), w * 0.82f, dp(30f).toFloat(), paint)
+        paint.color = Color.argb(a(18), 255, 255, 255)
+        canvas.drawLine(w * 0.18f, dp(76f).toFloat(), w * 0.34f, dp(76f).toFloat(), paint)
+        canvas.drawLine(w * 0.66f, dp(76f).toFloat(), w * 0.82f, dp(76f).toFloat(), paint)
 
-        val scanY = dp(48f).toFloat() + ((h - dp(120f).toFloat()) * phase)
+        val scanY = dp(86f).toFloat() + ((h - dp(160f).toFloat()) * phase)
         paint.color = Color.argb(a(12), Color.red(accent), Color.green(accent), Color.blue(accent))
         canvas.drawLine(w * 0.08f, scanY, w * 0.92f, scanY, paint)
 
@@ -100,7 +100,7 @@ class MiddesHudView(context: Context) : View(context) {
         fill.color = Color.argb(a(80), Color.red(accent), Color.green(accent), Color.blue(accent))
         for (i in 0 until 10) {
             val px = w * (0.08f + (i / 9f) * 0.84f)
-            val py = if (i % 2 == 0) dp(56f).toFloat() else h - dp(82f).toFloat()
+            val py = if (i % 2 == 0) dp(56f).toFloat() else h - dp(88f).toFloat()
             val pulse = ((sin(phase * Math.PI * 2.0 + i) + 1.0) * 0.5).toFloat()
             canvas.drawCircle(px, py, dp(0.8f).toFloat() + pulse * dp(0.9f).toFloat(), fill)
         }
