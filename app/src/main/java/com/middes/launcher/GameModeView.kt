@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.BatteryManager
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -20,13 +22,19 @@ class GameModeView(
     private val onExit: () -> Unit,
     private val onApps: () -> Unit,
     private val onNexa: () -> Unit,
-    private val launchApp: (String) -> Unit
+    private val launchApp: (String) -> Unit,
+    private val onSceneSwipe: (Int) -> Unit = {}
 ) : FrameLayout(context) {
 
     private val orbit = FrameLayout(context)
     private var running = false
     private var angle = 0.0
     private var exiting = false
+    private var downX = 0f
+    private var downY = 0f
+    private var swipeTriggered = false
+    private val swipeThreshold = MiddesUi.dp(context, 76f)
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -269,4 +277,31 @@ class GameModeView(
         paint.color = Color.argb(38, 255, 255, 255)
         canvas.drawCircle(cx, cy, MiddesUi.dp(context, 112f).toFloat(), paint)
     }
+    override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.rawX
+                downY = event.rawY
+                swipeTriggered = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (swipeTriggered) return true
+                val dx = event.rawX - downX
+                val dy = event.rawY - downY
+                if (kotlin.math.abs(dx) > swipeThreshold &&
+                    kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.15f &&
+                    kotlin.math.abs(dx) > touchSlop
+                ) {
+                    swipeTriggered = true
+                    performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    onSceneSwipe(if (dx < 0f) 1 else -1)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> swipeTriggered = false
+        }
+        return super.onInterceptTouchEvent(event)
+    }
+
+
 }

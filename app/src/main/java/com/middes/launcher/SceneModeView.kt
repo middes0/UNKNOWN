@@ -7,7 +7,9 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -28,7 +30,8 @@ class SceneModeView(
     private val onLaunch: (String) -> Unit,
     private val label: (String) -> String?,
     private val icon: (String) -> Drawable?,
-    private val packages: (String) -> List<String>
+    private val packages: (String) -> List<String>,
+    private val onSceneSwipe: (Int) -> Unit = {}
 ) : FrameLayout(context) {
 
     private val protocolArt = ProtocolArtView(context)
@@ -48,6 +51,11 @@ class SceneModeView(
     private var nightWarm = false
     private var nightClock = false
     private var studyStatus = "25:00"
+    private var downX = 0f
+    private var downY = 0f
+    private var swipeTriggered = false
+    private val swipeThreshold = MiddesUi.dp(context, 76f)
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
         setWillNotDraw(false)
@@ -85,6 +93,10 @@ class SceneModeView(
         content.addView(title, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 48f)))
         subtitle.gravity = Gravity.CENTER_VERTICAL
         content.addView(subtitle, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 31f)))
+        content.addView(MiddesUi.text(context, "← / →  DESLIZE PARA TROCAR CENA", 7.2f, MiddesColors.muted, true).apply {
+            gravity = Gravity.CENTER
+            letterSpacing = 0.10f
+        }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 19f)))
 
         val artFrame = FrameLayout(context).apply {
             clipChildren = false
@@ -171,6 +183,12 @@ class SceneModeView(
         val accent = SceneManager.accent(value)
         code.setTextColor(accent)
         primary.setTextColor(accent)
+        primary.background = MiddesUi.rounded(
+            context,
+            Color.argb(58, Color.red(accent), Color.green(accent), Color.blue(accent)),
+            15f,
+            Color.argb(36, Color.red(accent), Color.green(accent), Color.blue(accent))
+        )
 
         val protocolSuffix = if (protocolStatus.isBlank()) "" else "  •  $protocolStatus"
         when (value) {
@@ -517,4 +535,31 @@ class SceneModeView(
         private fun dp(value: Float): Float =
             value * resources.displayMetrics.density
     }
+    override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.rawX
+                downY = event.rawY
+                swipeTriggered = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (swipeTriggered) return true
+                val dx = event.rawX - downX
+                val dy = event.rawY - downY
+                if (kotlin.math.abs(dx) > swipeThreshold &&
+                    kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.15f &&
+                    kotlin.math.abs(dx) > touchSlop
+                ) {
+                    swipeTriggered = true
+                    performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    onSceneSwipe(if (dx < 0f) 1 else -1)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> swipeTriggered = false
+        }
+        return super.onInterceptTouchEvent(event)
+    }
+
+
 }

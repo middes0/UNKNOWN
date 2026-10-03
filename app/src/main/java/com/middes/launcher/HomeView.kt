@@ -19,7 +19,6 @@ class HomeView(
     private val onOpenDrawer: () -> Unit,
     private val onOpenDrawerSearch: () -> Unit,
     private val onOpenSettings: () -> Unit,
-    private val onOpenControl: () -> Unit,
     private val onOpenFlow: () -> Unit,
     private val onOpenNexa: () -> Unit,
     private val onLaunchApp: (String) -> Unit,
@@ -108,7 +107,7 @@ class HomeView(
         nexaStateText.gravity = android.view.Gravity.CENTER
         content.addView(nexaStateText, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)))
 
-        content.addView(MiddesUi.text(context, "DESLIZE ↑ PARA APLICATIVOS  •  ↓ PARA BUSCA", 7.5f, MiddesColors.muted, true).apply {
+        content.addView(MiddesUi.text(context, "← / → CENA   •   ↑ APPS   •   ↓ BUSCA", 7.5f, MiddesColors.muted, true).apply {
             gravity = android.view.Gravity.CENTER
             letterSpacing = 0.07f
         }, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)).apply {
@@ -151,7 +150,6 @@ class HomeView(
         dock.addView(dockItem("⌕", "APPS") { onOpenDrawer() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         dock.addView(dockItem("✦", "FLOW") { onOpenFlow() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         dock.addView(dockItem("◌", "NEXA") { onOpenNexa() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
-        dock.addView(dockItem("◈", "CONTROL") { onOpenControl() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         content.addView(dock, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 62f)))
         return content
     }
