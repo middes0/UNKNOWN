@@ -77,6 +77,11 @@ class SettingsView(
         row("Microfone", microphone, "Permissão controlada pelo Android", onMicrophoneSettings)
 
         section("Gestos")
+        switchRow(
+            "Troca de cena por gesto",
+            store.sceneSwipeEnabled,
+            "Arraste horizontalmente na tela inicial para mudar de modo"
+        ) { store.sceneSwipeEnabled = it }
         row("Deslizar para cima", "Apps", "Na tela inicial")
         row("Deslizar para baixo", "Busca", "Na tela inicial")
 
@@ -84,6 +89,45 @@ class SettingsView(
         row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e sistema", onAndroidSettings)
         row("Versão", "2.4", "MIDDES CONTROL / SCI-FI HUD / NEXA CORE")
         row("Gaming", "Dados reais", "Sem FPS ou desempenho inventados")
+    }
+
+    private fun switchRow(
+        title: String,
+        checked: Boolean,
+        subtitle: String,
+        onChanged: (Boolean) -> Unit
+    ) {
+        val card = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                MiddesUi.dp(context, 18f),
+                MiddesUi.dp(context, 9f),
+                MiddesUi.dp(context, 10f),
+                MiddesUi.dp(context, 9f)
+            )
+            background = MiddesUi.rounded(context, MiddesColors.surfaceRaised, 22f)
+        }
+        val textBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        textBox.addView(
+            MiddesUi.text(context, title, 14.5f, MiddesColors.white, true),
+            LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 25f))
+        )
+        textBox.addView(
+            MiddesUi.text(context, subtitle, 10f, MiddesColors.muted),
+            LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 30f))
+        )
+        card.addView(textBox, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 55f), 1f))
+        card.addView(Switch(context).apply {
+            isChecked = checked
+            setOnCheckedChangeListener { _, value -> onChanged(value) }
+            contentDescription = title
+        }, LinearLayout.LayoutParams(MiddesUi.dp(context, 58f), MiddesUi.dp(context, 52f)))
+        list.addView(card, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 75f)).apply {
+            setMargins(0, 0, 0, MiddesUi.dp(context, 8f))
+        })
     }
 
     private fun section(title: String) {
