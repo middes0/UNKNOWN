@@ -114,9 +114,9 @@ class SceneProfilesView(
         box.addView(brightnessValue, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 22f)))
         val brightnessSeek = seek(5, 100, original.brightnessPercent.coerceAtLeast(5)) { value -> brightnessValue.text = value.toString() + "%" }
         box.addView(brightnessSeek, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 36f)))
-        brightnessSeek.visibility = if (brightnessEnabled.isChecked) VISIBLE else GONE
+        brightnessSeek.visibility = if (brightnessEnabled.isChecked) View.VISIBLE else View.GONE
         brightnessValue.visibility = brightnessSeek.visibility
-        brightnessEnabled.setOnCheckedChangeListener { _, checked -> brightnessSeek.visibility = if (checked) VISIBLE else GONE; brightnessValue.visibility = brightnessSeek.visibility }
+        brightnessEnabled.setOnCheckedChangeListener { _, checked -> brightnessSeek.visibility = if (checked) View.VISIBLE else View.GONE; brightnessValue.visibility = brightnessSeek.visibility }
 
         val volumeEnabled = Switch(context).apply { text = "Alterar volume de mídia"; setTextColor(MiddesColors.muted); isChecked = original.mediaVolumePercent >= 0 }
         box.addView(volumeEnabled, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = MiddesUi.dp(context, 6f) })
@@ -125,9 +125,9 @@ class SceneProfilesView(
         val volumeStart = if (original.mediaVolumePercent >= 0) original.mediaVolumePercent else 50
         val volumeSeek = seek(0, 100, volumeStart) { value -> volumeValue.text = value.toString() + "%" }
         box.addView(volumeSeek, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 36f)))
-        volumeSeek.visibility = if (volumeEnabled.isChecked) VISIBLE else GONE
+        volumeSeek.visibility = if (volumeEnabled.isChecked) View.VISIBLE else View.GONE
         volumeValue.visibility = volumeSeek.visibility
-        volumeEnabled.setOnCheckedChangeListener { _, checked -> volumeSeek.visibility = if (checked) VISIBLE else GONE; volumeValue.visibility = volumeSeek.visibility }
+        volumeEnabled.setOnCheckedChangeListener { _, checked -> volumeSeek.visibility = if (checked) View.VISIBLE else View.GONE; volumeValue.visibility = volumeSeek.visibility }
 
         val dndSwitch = Switch(context).apply { text = "Silenciar notificações e chamadas"; setTextColor(MiddesColors.muted); isChecked = original.dndEnabled }
         box.addView(dndSwitch, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = MiddesUi.dp(context, 5f) })
