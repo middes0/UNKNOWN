@@ -107,7 +107,7 @@ class MiddesControlView(
                 ).apply { setMargins(0, 0, MiddesUi.dp(context, 6f), 0) }
             )
         }
-        modeScroller.addView(modes, HorizontalScrollView.LayoutParams(-2, MiddesUi.dp(context, 48f)))
+        modeScroller.addView(modes, android.view.ViewGroup.LayoutParams(-2, MiddesUi.dp(context, 48f)))
         hero.addView(modeScroller, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 48f)).apply {
             setMargins(0, MiddesUi.dp(context, 5f), 0, 0)
         })
