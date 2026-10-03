@@ -15,6 +15,7 @@ class SettingsView(
     private val onBack: () -> Unit,
     private val onWallpaper: () -> Unit,
     private val onSceneApps: () -> Unit,
+    private val onOpenProfiles: () -> Unit,
     private val onOpenDrawer: () -> Unit,
     private val onOpenFlow: () -> Unit,
     private val onToggleNexa: () -> Unit,
@@ -62,6 +63,7 @@ class SettingsView(
 
         section("Protocolos")
         row("Ambientes da NEXA", "Ocultos", "Estudo, Música, Noite e Gaming são ativados por voz", onSceneApps)
+        row("Perfis dos modos", "Configuráveis", "Brilho, volume, foco, DND, wallpaper e app de entrada", onOpenProfiles)
         row("Proteção contra notificações", dndStatus(), "Permite que os protocolos silenciem alertas e chamadas e restaurem o estado anterior", onOpenDndSettings)
 
         section("NEXA")
@@ -78,7 +80,7 @@ class SettingsView(
 
         section("Sistema")
         row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e sistema", onAndroidSettings)
-        row("Versão", "2.1", "SCI-FI HUD / NEXA CORE")
+        row("Versão", "2.3", "SCI-FI HUD / NEXA CORE")
         row("Gaming", "Dados reais", "Sem FPS ou desempenho inventados")
     }
 
