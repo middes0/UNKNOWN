@@ -33,6 +33,10 @@ class LauncherStore(context: Context) {
         get() = prefs.getBoolean(KEY_NEXA, false)
         set(value) { prefs.edit().putBoolean(KEY_NEXA, value).apply() }
 
+    var sceneSwipeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SCENE_SWIPE, true)
+        set(value) { prefs.edit().putBoolean(KEY_SCENE_SWIPE, value).apply() }
+
     fun sceneApps(scene: String, defaults: List<String>): List<String> {
         val key = sceneAppsKey(scene)
         if (!prefs.contains(key)) return defaults
@@ -153,6 +157,7 @@ class LauncherStore(context: Context) {
         const val KEY_DIM = "dim"
         const val KEY_WALLPAPER = "wallpaper"
         const val KEY_NEXA = "nexa_enabled"
+        const val KEY_SCENE_SWIPE = "scene_swipe_enabled"
         const val KEY_FAVORITES = "favorites"
         const val KEY_RECENTS = "recent_apps"
     }
