@@ -225,6 +225,8 @@ class MainActivity : ComponentActivity() {
             onOpenFlow = { showFlow() },
             onOpenNexa = { showNexa() },
             onQuickAction = { quickSystemAction(it) },
+            sceneSwipeEnabled = { store.sceneSwipeEnabled },
+            onSceneSwipe = { direction -> swipeScene(direction) },
             onLaunchApp = { launchPackage(it) },
             appLabel = { repo.label(it) },
             appIcon = { repo.icon(it) },
@@ -370,6 +372,16 @@ class MainActivity : ComponentActivity() {
         applyWallpaper()
         hudView.setMode("Normal")
         refreshHome()
+    }
+
+    private fun swipeScene(direction: Int) {
+        val scenes = SceneManager.scenes
+        val currentIndex = scenes.indexOf(store.scene).takeIf { it >= 0 } ?: 0
+        val nextIndex = (currentIndex + direction).mod(scenes.size)
+        val target = scenes[nextIndex]
+        if (target != store.scene) {
+            applyScene(target, true)
+        }
     }
 
     private fun toggleNexa() {
