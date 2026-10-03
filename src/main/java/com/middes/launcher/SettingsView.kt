@@ -80,7 +80,7 @@ class SettingsView(
 
         section("Sistema")
         row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e sistema", onAndroidSettings)
-        row("Versão", "2.1", "SCI-FI HUD / NEXA CORE")
+        row("Versão", "2.2", "SCI-FI HUD / NEXA CORE")
         row("Gaming", "Dados reais", "Sem FPS ou desempenho inventados")
     }
 
