@@ -2,6 +2,7 @@ package com.middes.launcher
 
 import android.app.AlertDialog
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -56,7 +57,10 @@ class SceneProfilesView(
                     .setTitle("Restaurar perfis")
                     .setMessage("As configurações personalizadas dos modos serão apagadas e os padrões voltarão.")
                     .setPositiveButton("Restaurar") { _, _ ->
-                        scenes.forEach { store.restoreSceneProfile(it) }
+                        scenes.forEach {
+                            store.restoreSceneProfile(it)
+                            store.setSceneWallpaperUri(it, null)
+                        }
                         rebuild()
                         onChanged()
                     }
@@ -164,6 +168,7 @@ class SceneProfilesView(
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 store.restoreSceneProfile(scene)
+                store.setSceneWallpaperUri(scene, null)
                 dialog.dismiss()
                 rebuild()
                 onChanged()
