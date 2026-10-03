@@ -13,6 +13,7 @@ class SettingsView(
     private val store: LauncherStore,
     private val scenes: List<String>,
     private val onBack: () -> Unit,
+    private val onOpenControl: () -> Unit,
     private val onWallpaper: () -> Unit,
     private val onSceneApps: () -> Unit,
     private val onOpenProfiles: () -> Unit,
@@ -57,6 +58,7 @@ class SettingsView(
         list.addView(top)
 
         section("Tela inicial")
+        row("Central de controle", "MIDDES CONTROL", "Status, modos e ações rápidas em um só lugar", onOpenControl)
         row("Papel de parede", if (store.wallpaperUri != null) "Personalizado" else "Padrão", "Escolher uma imagem", onWallpaper)
         row("Middes Flow", "Disponível", "Espaço dinâmico por contexto", onOpenFlow)
         row("Aplicativos", "Drawer", "Pesquisa, recentes, favoritos e gerenciamento", onOpenDrawer)
@@ -80,7 +82,7 @@ class SettingsView(
 
         section("Sistema")
         row("Configurações do Android", "Abrir", "Wi‑Fi, Bluetooth, tela e sistema", onAndroidSettings)
-        row("Versão", "2.3", "SCI-FI HUD / NEXA CORE")
+        row("Versão", "2.4", "MIDDES CONTROL / SCI-FI HUD / NEXA CORE")
         row("Gaming", "Dados reais", "Sem FPS ou desempenho inventados")
     }
 
