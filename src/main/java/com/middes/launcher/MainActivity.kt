@@ -905,7 +905,8 @@ class MainActivity : ComponentActivity() {
         screen = Screen.HOME
         if (::gameView.isInitialized) gameView.stop()
         if (::flowView.isInitialized) flowView.stop()
-        protocolController.applyScene("Normal")
+        protocolController.applyScene("Normal", profileStore.profile("Normal"))
+        applyWallpaper()
         if (::hudView.isInitialized) hudView.setMode("Normal")
         setScreenVisibility(screen)
         refreshHome()
@@ -932,7 +933,8 @@ class MainActivity : ComponentActivity() {
         if (::gameView.isInitialized) gameView.stop()
         if (store.scene == "Gaming") {
             store.scene = "Normal"
-            protocolController.applyScene("Normal")
+            protocolController.applyScene("Normal", profileStore.profile("Normal"))
+            applyWallpaper()
         }
         flowView.setApps(buildFlowApps().map { it to repo.icon(it) })
         screen = Screen.FLOW
