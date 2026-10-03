@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var homeView: HomeView
     private lateinit var drawerView: DrawerView
     private lateinit var settingsView: SettingsView
+    private lateinit var controlView: MiddesControlView
     private lateinit var profilesView: SceneProfilesView
     private lateinit var flowView: MiddesFlowView
     private lateinit var gameView: GameModeView
@@ -56,6 +57,7 @@ class MainActivity : ComponentActivity() {
             when (screen) {
                 Screen.HOME -> refreshHome()
                 Screen.NEXA -> if (::nexaView.isInitialized) nexaView.refresh()
+                Screen.CONTROL -> if (::controlView.isInitialized) controlView.refresh()
                 Screen.SCENE -> if (::sceneView.isInitialized) refreshSceneView()
                 else -> Unit
             }
@@ -157,7 +159,7 @@ class MainActivity : ComponentActivity() {
     override fun onBackPressed() {
         when (screen) {
             Screen.HOME -> Unit
-            Screen.DRAWER, Screen.FLOW, Screen.NEXA -> showHome()
+            Screen.DRAWER, Screen.FLOW, Screen.NEXA, Screen.CONTROL -> showHome()
             Screen.SETTINGS -> showHome()
             Screen.PROFILES -> showSettings()
             Screen.SCENE -> {
@@ -219,6 +221,7 @@ class MainActivity : ComponentActivity() {
             onOpenDrawer = { showDrawer(false) },
             onOpenDrawerSearch = { showDrawer(true) },
             onOpenSettings = { showSettings() },
+            onOpenControl = { showControl() },
             onOpenFlow = { showFlow() },
             onOpenNexa = { showNexa() },
             onQuickAction = { quickSystemAction(it) },
@@ -242,6 +245,7 @@ class MainActivity : ComponentActivity() {
         settingsView = SettingsView(
             this, store, SceneManager.scenes,
             onBack = { showHome() },
+            onOpenControl = { showControl() },
             onWallpaper = { chooseWallpaper() },
             onSceneApps = { showSceneAppsChooser() },
             onOpenProfiles = { showProfiles() },
@@ -255,6 +259,21 @@ class MainActivity : ComponentActivity() {
             onOpenDndSettings = { protocolController.openDndSettings() }
         )
         root.addView(settingsView, FrameLayout.LayoutParams(-1, -1))
+
+        controlView = MiddesControlView(
+            this,
+            onBack = { showHome() },
+            onMode = { applyScene(it, true) },
+            onNexa = { showNexa() },
+            onApps = { showDrawer(false) },
+            onFlow = { showFlow() },
+            onProfiles = { showProfiles() },
+            onSettings = { showSettings() },
+            onWallpaper = { chooseWallpaper() },
+            onQuickAction = { quickSystemAction(it) },
+            snapshotProvider = { nexaSnapshot() }
+        )
+        root.addView(controlView, FrameLayout.LayoutParams(-1, -1))
 
         profilesView = SceneProfilesView(
             this,
@@ -343,7 +362,7 @@ class MainActivity : ComponentActivity() {
         )
         root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
 
-        listOf<View>(drawerView, settingsView, profilesView, nexaView, sceneView, flowView, gameView).forEach {
+        listOf<View>(drawerView, settingsView, controlView, profilesView, nexaView, sceneView, flowView, gameView).forEach {
             it.visibility = View.GONE
         }
 
@@ -358,6 +377,14 @@ class MainActivity : ComponentActivity() {
         refreshHome()
         if (::nexaView.isInitialized) nexaView.refresh()
         if (screen == Screen.SETTINGS) settingsView.rebuild()
+    }
+
+    private fun showControl() {
+        if (::gameView.isInitialized) gameView.stop()
+        if (::flowView.isInitialized) flowView.stop()
+        controlView.refresh()
+        screen = Screen.CONTROL
+        setScreenVisibility(screen)
     }
 
     private fun showNexa() {
@@ -569,6 +596,10 @@ class MainActivity : ComponentActivity() {
                 if (applyScene("Normal", true, !silent)) {
                     if (!silent) nexa.speak("Modo normal ativado.")
                 } else if (!silent) nexa.speak("Não consegui voltar ao modo normal.")
+            }
+            matchesAny(command, "abrir controle", "abrir central", "abrir central de controle", "central de controle", "painel de controle", "abrir control") -> {
+                showControl()
+                if (!silent) nexa.speak("MIDDES Control aberto.")
             }
             matchesAny(command, "ativar flow", "ativa flow", "abrir flow", "abrir middes flow", "modo flow") -> {
                 showFlow()
@@ -961,6 +992,7 @@ class MainActivity : ComponentActivity() {
         homeView.visibility = if (active == Screen.HOME) View.VISIBLE else View.GONE
         drawerView.visibility = if (active == Screen.DRAWER) View.VISIBLE else View.GONE
         settingsView.visibility = if (active == Screen.SETTINGS) View.VISIBLE else View.GONE
+        controlView.visibility = if (active == Screen.CONTROL) View.VISIBLE else View.GONE
         profilesView.visibility = if (active == Screen.PROFILES) View.VISIBLE else View.GONE
         nexaView.visibility = if (active == Screen.NEXA) View.VISIBLE else View.GONE
         sceneView.visibility = if (active == Screen.SCENE) View.VISIBLE else View.GONE
@@ -1299,5 +1331,5 @@ class MainActivity : ComponentActivity() {
         const val ACTION_IMAGE_CAPTURE = "android.media.action.IMAGE_CAPTURE"
     }
 
-    private enum class Screen { HOME, DRAWER, SETTINGS, PROFILES, NEXA, SCENE, FLOW, GAME }
+    private enum class Screen { HOME, DRAWER, SETTINGS, CONTROL, PROFILES, NEXA, SCENE, FLOW, GAME }
 }
