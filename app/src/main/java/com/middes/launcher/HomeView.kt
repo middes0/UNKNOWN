@@ -19,6 +19,7 @@ class HomeView(
     private val onOpenDrawer: () -> Unit,
     private val onOpenDrawerSearch: () -> Unit,
     private val onOpenSettings: () -> Unit,
+    private val onOpenControl: () -> Unit,
     private val onOpenFlow: () -> Unit,
     private val onOpenNexa: () -> Unit,
     private val onLaunchApp: (String) -> Unit,
@@ -148,7 +149,7 @@ class HomeView(
         dock.addView(dockItem("⌕", "APPS") { onOpenDrawer() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         dock.addView(dockItem("✦", "FLOW") { onOpenFlow() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         dock.addView(dockItem("◌", "NEXA") { onOpenNexa() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
-        dock.addView(dockItem("⚙", "SYSTEM") { onOpenSettings() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
+        dock.addView(dockItem("◈", "CONTROL") { onOpenControl() }, LinearLayout.LayoutParams(0, MiddesUi.dp(context, 54f), 1f))
         content.addView(dock, LinearLayout.LayoutParams(-1, MiddesUi.dp(context, 62f)))
         return content
     }
