@@ -1452,7 +1452,7 @@ class MainActivity : ComponentActivity() {
         var changed = false
         val responses = mutableListOf<String>()
 
-        val focusMatch = Regex("""(\\d{1,3})\\s*(?:minutos|min)""").find(command)
+        val focusMatch = Regex("""(\d{1,3})\s*(?:minutos|min)""").find(command)
         if (focusMatch != null && (
             containsWord(command, "foco") ||
                 containsWord(command, "tempo") ||
@@ -1469,7 +1469,7 @@ class MainActivity : ComponentActivity() {
             responses += "foco de " + minutes + " minutos"
         }
 
-        val brightnessMatch = Regex("""brilho(?:\\s+.*?\\s+|\\s*(?:em|para|de)\\s*)(\\d{1,3})\\s*%?""").find(command)
+        val brightnessMatch = Regex("""brilho(?:\s+.*?\s+|\s*(?:em|para|de)\s*)(\d{1,3})\s*%?""").find(command)
         if (containsWord(command, "brilho") && brightnessMatch != null) {
             val brightness = brightnessMatch.groupValues[1].toInt().coerceIn(0, 100)
             profile = profile.copy(brightnessPercent = brightness)
@@ -1477,7 +1477,7 @@ class MainActivity : ComponentActivity() {
             responses += "brilho em " + brightness + " por cento"
         }
 
-        val volumeMatch = Regex("""volume(?:\\s+.*?\\s+|\\s*(?:em|para|de)\\s*)(\\d{1,3})\\s*%?""").find(command)
+        val volumeMatch = Regex("""volume(?:\s+.*?\s+|\s*(?:em|para|de)\s*)(\d{1,3})\s*%?""").find(command)
         if (containsWord(command, "volume") && volumeMatch != null) {
             val volume = volumeMatch.groupValues[1].toInt().coerceIn(0, 100)
             profile = profile.copy(volumePercent = volume)
@@ -1504,7 +1504,7 @@ class MainActivity : ComponentActivity() {
         if (containsAnyText(command, "quando eu ativar", "quando ativar", "ao ativar", "quando entrar") &&
             containsAnyText(command, "abrir ", "abre ", "abra ", "iniciar ", "inicia ", "inicie ")
         ) {
-            val appName = Regex("""(?:abrir|abre|abra|iniciar|inicia|inicie)\\s+(.+)$""")
+            val appName = Regex("""(?:abrir|abre|abra|iniciar|inicia|inicie)\s+(.+)$""")
                 .find(command)?.groupValues?.getOrNull(1)?.trim().orEmpty()
             if (appName.isNotBlank()) {
                 val app = repo.findBySpokenName(appName)
@@ -1520,9 +1520,9 @@ class MainActivity : ComponentActivity() {
         }
 
         if (scene == "Música" && containsWord(command, "player")) {
-            val appName = Regex("""(?:meu|minha)\\s+(.+?)\\s+(?:e|eh)\\s+(?:o|a)\\s+player""")
+            val appName = Regex("""(?:meu|minha)\s+(.+?)\s+(?:e|eh)\s+(?:o|a)\s+player""")
                 .find(command)?.groupValues?.getOrNull(1)?.trim()
-                ?: Regex("""player(?:\\s+da\\s+musica)?\\s+(?:e|eh)\\s+(.+)$""")
+                ?: Regex("""player(?:\s+da\s+musica)?\s+(?:e|eh)\s+(.+)$""
                     .find(command)?.groupValues?.getOrNull(1)?.trim()
             if (!appName.isNullOrBlank()) {
                 val app = repo.findBySpokenName(appName)
