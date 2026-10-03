@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         applyWallpaper()
-        val protocolResult = protocolController.applyScene(store.scene, store.sceneProfile(store.scene), false, false)
+        val protocolResult = protocolController.applyScene(store.scene, store.sceneProfile(store.scene))
         if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS) {
             showDndAccessDialog()
         }
@@ -781,7 +781,7 @@ class MainActivity : ComponentActivity() {
             Screen.HOME -> {
                 if (!silent) nexa.speak("Já estou na tela inicial.")
             }
-            Screen.DRAWER, Screen.SETTINGS, Screen.NEXA, Screen.FLOW, Screen.SCENE, Screen.GAME -> {
+            Screen.DRAWER, Screen.SETTINGS, Screen.PROFILES, Screen.NEXA, Screen.FLOW, Screen.SCENE, Screen.GAME -> {
                 showHome()
                 if (!silent) nexa.speak("Voltando.")
             }
@@ -949,7 +949,7 @@ class MainActivity : ComponentActivity() {
         if (::gameView.isInitialized) gameView.stop()
         if (store.scene == "Gaming") {
             store.scene = "Normal"
-            protocolController.applyScene("Normal")
+            protocolController.applyScene("Normal", store.sceneProfile("Normal"))
         }
         flowView.setApps(buildFlowApps().map { it to repo.icon(it) })
         screen = Screen.FLOW
