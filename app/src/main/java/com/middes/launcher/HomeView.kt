@@ -27,7 +27,9 @@ class HomeView(
     private val appIcon: (String) -> Drawable?,
     private val favoritePackages: () -> List<String>,
     private val nexaState: () -> NexaState,
-    private val onQuickAction: (String) -> Unit
+    private val onQuickAction: (String) -> Unit,
+    private val sceneSwipeEnabled: () -> Boolean,
+    private val onSceneSwipe: (Int) -> Unit
 ) : FrameLayout(context) {
 
     private val clock = MiddesUi.text(context, "", 64f, MiddesColors.white)
@@ -265,6 +267,16 @@ class HomeView(
                 ) {
                     swipeTriggered = true
                     if (dy < 0) onOpenDrawer() else onOpenDrawerSearch()
+                    return true
+                }
+                if (sceneSwipeEnabled() &&
+                    kotlin.math.abs(dx) > threshold &&
+                    kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.15f &&
+                    kotlin.math.abs(dx) > touchSlop
+                ) {
+                    swipeTriggered = true
+                    performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    onSceneSwipe(if (dx < 0f) 1 else -1)
                     return true
                 }
             }
