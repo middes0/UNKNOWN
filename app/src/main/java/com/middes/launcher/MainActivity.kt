@@ -307,11 +307,11 @@ class MainActivity : ComponentActivity() {
                     "Estudo" -> {
                         studyRunning = false
                         handler.removeCallbacks(studyTicker)
-                        studyRemainingSeconds = 25 * 60
+                        studyRemainingSeconds = store.sceneProfile("Estudo").focusMinutes * 60
                         refreshSceneView()
                     }
                     "Música" -> sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, "play/pause")
-                    "Noite" -> setNightBrightness(0.08f)
+                    "Noite" -> setNightBrightness(((store.sceneProfile("Noite").brightnessPercent).takeIf { it > 0 } ?: 8) / 100f)
                 }
             },
             onTertiary = {
