@@ -142,8 +142,8 @@ class LauncherStore(context: Context) {
         return when (scene) {
             "Noite" -> SceneProfile(25, 18, -1, true, defaultDim, false, null)
             "Estudo" -> SceneProfile(25, 0, -1, true, defaultDim, false, null)
-            "Gaming" -> SceneProfile(25, 0, -1, true, false, false, null)
-            "Música" -> SceneProfile(25, 0, -1, false, false, false, null)
+            "Gaming" -> SceneProfile(25, 0, -1, true, defaultDim, false, null)
+            "Música" -> SceneProfile(25, 0, -1, false, defaultDim, false, null)
             else -> SceneProfile(25, 0, -1, false, defaultDim, false, null)
         }
     }
