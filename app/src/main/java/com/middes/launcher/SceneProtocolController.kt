@@ -31,6 +31,7 @@ class SceneProtocolController(
     private var savedInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL
     private var changedDnd = false
     private var savedMediaVolume = 0
+    private var changedMediaVolume = false
 
     fun applyScene(scene: String, profile: LauncherStore.SceneProfile): Result {
         return try {
@@ -104,19 +105,22 @@ class SceneProtocolController(
             // Mantém o comportamento normal do Android.
         }
 
-        try {
-            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-            audioManager.setStreamVolume(
-                android.media.AudioManager.STREAM_MUSIC,
-                savedMediaVolume.coerceIn(0, max),
-                0
-            )
-        } catch (_: Exception) {
-            // Mantém o volume atual se o Android não aceitar a restauração.
+        if (changedMediaVolume) {
+            try {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                audioManager.setStreamVolume(
+                    android.media.AudioManager.STREAM_MUSIC,
+                    savedMediaVolume.coerceIn(0, max),
+                    0
+                )
+            } catch (_: Exception) {
+                // Mantém o volume atual se o Android não aceitar a restauração.
+            }
         }
 
         changedDnd = false
+        changedMediaVolume = false
         savedMediaVolume = 0
         protocolActive = false
     }
@@ -161,24 +165,26 @@ class SceneProtocolController(
     }
 
     private fun applyMediaVolume(percent: Int) {
-        if (percent == -1) {
-            try {
-                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-                val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-                audioManager.setStreamVolume(
-                    android.media.AudioManager.STREAM_MUSIC,
-                    savedMediaVolume.coerceIn(0, max),
-                    0
-                )
-            } catch (_: Exception) {}
-            return
-        }
+        // -1 significa "não mexer no volume". A restauração só acontece ao
+        // sair da cena que realmente alterou o volume.
+        if (percent == -1) return
         if (percent !in 0..100) return
+
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
             val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
             val target = ((max * percent) / 100f).roundToInt().coerceIn(0, max)
-            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, target, 0)
+
+            if (!changedMediaVolume) {
+                savedMediaVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            }
+
+            audioManager.setStreamVolume(
+                android.media.AudioManager.STREAM_MUSIC,
+                target,
+                0
+            )
+            changedMediaVolume = true
         } catch (_: Exception) {
             // O restante do protocolo continua mesmo sem controle de volume.
         }
