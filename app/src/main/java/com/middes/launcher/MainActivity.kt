@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import java.text.Normalizer
 import java.util.Locale
 
@@ -115,6 +116,7 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        enterImmersiveMode()
 
         store = LauncherStore(this)
         repo = AppRepository(this)
@@ -128,6 +130,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        enterImmersiveMode()
         applyWallpaper()
         val protocolResult = protocolController.applyScene(store.scene, store.sceneProfile(store.scene))
         if (protocolResult == SceneProtocolController.Result.MISSING_DND_ACCESS) {
@@ -138,6 +141,18 @@ class MainActivity : ComponentActivity() {
         handler.removeCallbacks(clockTicker)
         handler.post(clockTicker)
         refreshHome()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersiveMode()
+    }
+
+    private fun enterImmersiveMode() {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.systemBarsBehavior =
+            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
     }
 
     override fun onPause() {
